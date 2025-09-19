@@ -29,16 +29,25 @@ export function registerRoutes(app: Express): Server {
     try {
       const { CallSid, RecordingUrl, From } = req.body;
       
-      if (!RecordingUrl || !From) {
-        return res.status(400).json({ error: "Missing required fields: RecordingUrl, From" });
+      if (!CallSid || !RecordingUrl || !From) {
+        return res.status(400).json({ error: "Missing required fields: CallSid, RecordingUrl, From" });
       }
 
-      // Create initial submission record
-      const submission = await storage.createSubmission({
+      // Validate input data
+      const validatedData = insertSubmissionSchema.pick({
+        callSid: true,
+        callerNumber: true,
+        recordingUrl: true,
+        status: true
+      }).parse({
+        callSid: CallSid,
         callerNumber: From,
         recordingUrl: RecordingUrl,
         status: "PENDING",
       });
+
+      // Create initial submission record
+      const submission = await storage.createSubmission(validatedData);
 
       // Process asynchronously
       processSubmissionAsync(submission.id);

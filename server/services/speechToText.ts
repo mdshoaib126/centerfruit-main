@@ -2,6 +2,10 @@ import { SpeechClient } from '@google-cloud/speech';
 import fetch from 'node-fetch';
 import { readFileSync } from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 interface SpeechToTextResult {
   transcript: string;
@@ -13,10 +17,25 @@ export class SpeechToTextService {
 
   constructor() {
     // Initialize Google Cloud Speech client
-    // Service account key should be provided via GOOGLE_APPLICATION_CREDENTIALS env var
-    this.client = new SpeechClient({
-      keyFilename: './server/config/service-account-key.json',
-    });
+    // Use environment credentials for security
+    if (process.env.NODE_ENV === 'test' || process.env.DISABLE_EXTERNAL_CALLS === 'true') {
+      // In test mode, we'll return mock responses anyway
+      this.client = new SpeechClient();
+    } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+      // Production: use GOOGLE_APPLICATION_CREDENTIALS environment variable
+      this.client = new SpeechClient();
+    } else {
+      // Development: use the uploaded service account key if it exists
+      const keyPath = path.resolve(__dirname, '../config/service-account-key.json');
+      try {
+        this.client = new SpeechClient({
+          keyFilename: keyPath,
+        });
+      } catch (error) {
+        console.warn('No service account key found. Speech-to-Text will use mock responses.');
+        this.client = new SpeechClient();
+      }
+    }
   }
 
   async transcribeAudio(recordingUrl: string): Promise<SpeechToTextResult> {

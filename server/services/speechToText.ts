@@ -13,13 +13,13 @@ export class SpeechToTextService {
     // Initialize Google Cloud Speech client
     // Service account key should be provided via GOOGLE_APPLICATION_CREDENTIALS env var
     this.client = new SpeechClient({
-      keyFilename: process.env.GOOGLE_STT_JSON_KEY_PATH,
+      keyFilename: './server/config/service-account-key.json',
     });
   }
 
   async transcribeAudio(recordingUrl: string): Promise<SpeechToTextResult> {
     // Test mode: return mock transcript for testing without external API
-    if (process.env.NODE_ENV === 'test' || process.env.DISABLE_EXTERNAL_CALLS === 'true' || !process.env.GOOGLE_STT_JSON_KEY_PATH) {
+    if (process.env.NODE_ENV === 'test' || process.env.DISABLE_EXTERNAL_CALLS === 'true') {
       return {
         transcript: "कच्चे घर में कुछ कच्चे कचौरी खाए।",
         confidence: 0.9,

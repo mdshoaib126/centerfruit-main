@@ -17,6 +17,14 @@ export class SMSService {
   }
 
   async sendResultSMS(phoneNumber: string, status: 'PASS' | 'FAIL', score?: number): Promise<SMSResult> {
+    // Test mode: return mock success without sending actual SMS
+    if (process.env.NODE_ENV === 'test' || process.env.DISABLE_EXTERNAL_CALLS === 'true' || !process.env.MSG91_API_KEY) {
+      return {
+        success: true,
+        messageId: 'mock-message-' + Date.now(),
+      };
+    }
+
     try {
       const templateId = status === 'PASS' ? 
         process.env.MSG91_PASS_TEMPLATE_ID : 

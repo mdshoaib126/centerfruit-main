@@ -202,14 +202,11 @@ async function processSubmissionAsync(submissionId: string) {
     const scoringResult = scoringService.scoreTranscript(transcriptResult.transcript);
     
     // Step 3: Update submission with transcript, score, and status
-    const updatedSubmission = await storage.getSubmission(submissionId);
-    if (updatedSubmission) {
-      updatedSubmission.transcript = transcriptResult.transcript;
-      updatedSubmission.score = scoringResult.score;
-      updatedSubmission.status = scoringResult.status;
-      
-      await storage.updateSubmissionStatus(submissionId, scoringResult.status);
-    }
+    const updatedSubmission = await storage.updateSubmission(submissionId, {
+      transcript: transcriptResult.transcript,
+      score: scoringResult.score,
+      status: scoringResult.status,
+    });
 
     // Step 4: Send SMS notification
     const smsResult = await smsService.sendResultSMS(

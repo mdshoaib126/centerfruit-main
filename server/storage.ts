@@ -19,6 +19,7 @@ export interface IStorage {
   // Submission methods
   getSubmission(id: string): Promise<Submission | undefined>;
   createSubmission(submission: InsertSubmission): Promise<Submission>;
+  updateSubmission(id: string, updates: Partial<Pick<Submission, 'transcript' | 'score' | 'status'>>): Promise<Submission | undefined>;
   updateSubmissionStatus(id: string, status: "PENDING" | "PASS" | "FAIL"): Promise<Submission | undefined>;
   getSubmissions(filters?: {
     status?: string;
@@ -101,13 +102,17 @@ export class MemStorage implements IStorage {
     return submission;
   }
 
-  async updateSubmissionStatus(id: string, status: "PENDING" | "PASS" | "FAIL"): Promise<Submission | undefined> {
+  async updateSubmission(id: string, updates: Partial<Pick<Submission, 'transcript' | 'score' | 'status'>>): Promise<Submission | undefined> {
     const submission = this.submissions.get(id);
     if (!submission) return undefined;
     
-    const updated = { ...submission, status };
+    const updated = { ...submission, ...updates };
     this.submissions.set(id, updated);
     return updated;
+  }
+
+  async updateSubmissionStatus(id: string, status: "PENDING" | "PASS" | "FAIL"): Promise<Submission | undefined> {
+    return this.updateSubmission(id, { status });
   }
 
   async getSubmissions(filters?: {

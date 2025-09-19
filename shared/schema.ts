@@ -11,6 +11,7 @@ export const admins = pgTable("admins", {
 
 export const submissions = pgTable("submissions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  callSid: text("call_sid").notNull(),
   callerNumber: text("caller_number").notNull(),
   recordingUrl: text("recording_url").notNull(),
   transcript: text("transcript"),
@@ -25,6 +26,7 @@ export const insertAdminSchema = createInsertSchema(admins).pick({
 });
 
 export const insertSubmissionSchema = createInsertSchema(submissions).pick({
+  callSid: true,
   callerNumber: true,
   recordingUrl: true,
   transcript: true,

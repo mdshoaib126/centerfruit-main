@@ -52,6 +52,60 @@ export class MemStorage implements IStorage {
       username: "admin", 
       password: "959d4f408acce790eeeb6b8eb91ab555dd23bab9b438846775d7b590d668926231cbd313f1950c3e786bb7267b5904485cfcbbad8e0cd1fa4045b914d403a81e.316121602da53fb1776e1ab55aa88645",
     });
+    
+    // Initialize with sample submissions for testing
+    this.initializeSampleData();
+  }
+
+  private initializeSampleData() {
+    console.log("Initializing sample data...");
+    // Create sample submissions for testing dashboard functionality
+    const sampleSubmissions = [
+      {
+        callSid: "sample-call-1",
+        callerNumber: "+919876543210",
+        recordingUrl: "http://example.com/sample1.wav",
+        transcript: "कच्चे घर में कुछ कच्चे कचौरी खाए।",
+        score: 45,
+        status: "FAIL" as const
+      },
+      {
+        callSid: "sample-call-2", 
+        callerNumber: "+919876543211",
+        recordingUrl: "http://example.com/sample2.wav",
+        transcript: "कच्चे घर में कच्चे पत्ते कच्चे कचौरी खाए।",
+        score: 85,
+        status: "PASS" as const
+      },
+      {
+        callSid: "sample-call-3",
+        callerNumber: "+919876543212", 
+        recordingUrl: "http://example.com/sample3.wav",
+        transcript: "कच्चे घर में कुछ पत्ते खाए।",
+        score: 62,
+        status: "FAIL" as const
+      }
+    ];
+
+    // Create the sample submissions with timestamps spread over the last few days
+    const now = new Date();
+    for (let i = 0; i < sampleSubmissions.length; i++) {
+      const sample = sampleSubmissions[i];
+      const createdAt = new Date(now.getTime() - (i * 24 * 60 * 60 * 1000)); // i days ago
+      
+      const submission: Submission = {
+        id: randomUUID(),
+        callSid: sample.callSid,
+        callerNumber: sample.callerNumber,
+        recordingUrl: sample.recordingUrl,
+        transcript: sample.transcript,
+        score: sample.score,
+        status: sample.status,
+        createdAt
+      };
+      
+      this.submissions.set(submission.id, submission);
+    }
   }
 
   async getAdmin(id: string): Promise<Admin | undefined> {

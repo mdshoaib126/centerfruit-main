@@ -1,5 +1,7 @@
 import { SpeechClient } from '@google-cloud/speech';
 import fetch from 'node-fetch';
+import { readFileSync } from 'fs';
+import path from 'path';
 
 interface SpeechToTextResult {
   transcript: string;
@@ -71,6 +73,55 @@ export class SpeechToTextService {
     } catch (error) {
       console.error('Speech-to-text error:', error);
       throw new Error(`Failed to transcribe audio: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  // Method to test local audio files
+  async transcribeLocalFile(filePath: string): Promise<SpeechToTextResult> {
+    try {
+      console.log(`Testing local audio file: ${filePath}`);
+      
+      // Read the local audio file
+      const audioBuffer = readFileSync(filePath);
+      
+      // Configure the request for MP3 files
+      const request = {
+        audio: {
+          content: audioBuffer.toString('base64'),
+        },
+        config: {
+          encoding: 'MP3' as const, // For MP3 files
+          sampleRateHertz: 16000, // Standard rate for MP3
+          languageCode: 'hi-IN', // Hindi for Durga Puja contest
+          alternativeLanguageCodes: ['en-IN'], // Fallback to English
+          enableAutomaticPunctuation: true,
+          model: 'latest_short',
+        },
+      };
+
+      // Perform the speech recognition
+      const [sttResponse] = await this.client.recognize(request);
+      
+      if (!sttResponse.results || sttResponse.results.length === 0) {
+        throw new Error('No transcript found in audio file');
+      }
+
+      const result = sttResponse.results[0];
+      const alternative = result.alternatives?.[0];
+      
+      if (!alternative || !alternative.transcript) {
+        throw new Error('No transcript alternative found');
+      }
+
+      console.log(`Transcription result: "${alternative.transcript}" (confidence: ${alternative.confidence})`);
+      
+      return {
+        transcript: alternative.transcript,
+        confidence: alternative.confidence || 0,
+      };
+    } catch (error) {
+      console.error('Local file transcription error:', error);
+      throw new Error(`Failed to transcribe local file: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 }

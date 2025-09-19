@@ -1,0 +1,54 @@
+Build a full-stack project in Node.js (Express) + React + MySQL. 
+The app is called "Centerfruit Durga Puja Contest". 
+It has two parts: 
+
+1. **Backend (Node.js + Express + MySQL)**  
+   - Expose APIs for Exotel IVR webhooks: 
+     - `/ivr/recording` → receives recording URL and caller number from Exotel after recording is done. Save to MySQL with fields: id, caller_number, recording_url, transcript, score, status (PENDING, PASS, FAIL), created_at.  
+   - Add Google Cloud Speech-to-Text integration:  
+     - Fetch the recording from `recording_url`.  
+     - Convert to text using Google STT API (using service account json).  
+     - Compare transcript with expected tongue twister (string comparison or Levenshtein distance).  
+     - Store transcript + score in DB.  
+   - Add logic for pass/fail:  
+     - If score >= 70% → PASS. Else FAIL.  
+   - When PASS or FAIL is determined → send SMS via MSG91 using template API with dedicated CLI.  
+   - API for Admin dashboard:  
+     - `GET /submissions` → list all submissions with filters (date, status).  
+     - `GET /submission/:id` → fetch single submission details.  
+     - `PUT /submission/:id/status` → allow manual override (approve/reject).  
+
+   Database tables:  
+   - `submissions (id, caller_number, recording_url, transcript, score, status, created_at)`  
+   - `admins (id, username, password hash)`  
+
+   - Include authentication (JWT) for admin APIs.  
+
+2. **Frontend (React + Tailwind + shadcn/ui)**  
+   - Create Admin Dashboard:  
+     - Login page (username, password).  
+     - Dashboard page → show table of all submissions (caller number, transcript, score, status, created_at).  
+     - Filters: by status (PASS/FAIL/PENDING) and by date.  
+     - Action buttons per row: "Approve", "Reject", "View Recording" (play audio from `recording_url`).  
+   - Implement React Router for navigation.  
+   - Use Axios for API calls.  
+
+3. **Other requirements**  
+   - Use `.env` file for configs:  
+     - MySQL credentials  
+     - MSG91 API key + sender ID  
+     - Exotel webhook secret  
+     - Google STT JSON key path  
+     - JWT secret  
+   - Add a simple README.md with setup instructions.  
+   - Provide `package.json` for both backend and frontend.  
+   - Add sample SQL migration script to create DB tables.  
+   - Include CORS setup for frontend-backend communication.  
+
+Output should be a complete project structure:  
+- `/backend` (Node.js + Express code, MySQL models, APIs)  
+- `/frontend` (React admin panel)  
+- `.env.example`  
+- `README.md`  
+
+The final project must be production ready, runnable with `npm run dev` in backend and frontend separately. 

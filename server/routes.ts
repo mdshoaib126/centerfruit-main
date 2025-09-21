@@ -138,7 +138,6 @@ export function registerRoutes(app: Express): Server {
           status, 
           submission.score || undefined
         );
-        
         if (!smsResult.success) {
           console.error("SMS sending failed:", smsResult.error);
         }

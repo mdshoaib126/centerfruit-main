@@ -16,15 +16,19 @@ export default function AuthPage() {
   const [, setLocation] = useLocation();
 
   // Redirect if already logged in
-  useEffect(() => {
-    if (user) {
-      setLocation("/");
-    }
-  }, [user, setLocation]);
 
+  useEffect(() => {
   if (user) {
-    return null; // or a loading spinner
+    setLocation("/");
   }
+}, [user, setLocation]);
+
+if (user) {
+  setLocation("/");
+  return null;
+}
+
+ 
 
   const loginForm = useForm<InsertAdmin>({
     resolver: zodResolver(insertAdminSchema),

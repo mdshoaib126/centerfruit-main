@@ -1,5 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
+import { Play, Eye } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +17,7 @@ interface SubmissionsTableProps {
   };
   isLoading: boolean;
   onPlayRecording: (submission: Submission) => void;
-  onViewDetails: (submission: Submission) => void;
+/*   onViewDetails: (submission: Submission) => void; */
   onPageChange: (offset: number) => void;
   currentOffset: number;
   pageSize: number;
@@ -25,8 +26,7 @@ interface SubmissionsTableProps {
 export default function SubmissionsTable({
   data,
   isLoading,
-  onPlayRecording,
-  onViewDetails,
+  onPlayRecording, 
   onPageChange,
   currentOffset,
   pageSize,
@@ -54,7 +54,7 @@ export default function SubmissionsTable({
       });
     },
   });
-
+/* 
   const handleApprove = (submission: Submission) => {
     updateStatusMutation.mutate({ id: submission.id, status: "PASS" });
   };
@@ -62,7 +62,7 @@ export default function SubmissionsTable({
   const handleReject = (submission: Submission) => {
     updateStatusMutation.mutate({ id: submission.id, status: "FAIL" });
   };
-
+ */
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "PASS":
@@ -181,47 +181,17 @@ export default function SubmissionsTable({
                   <TableCell>
                     <div className="flex items-center space-x-2">
                       <Button
-                        variant="ghost"
+                        variant="default"
                         size="sm"
                         onClick={() => onPlayRecording(submission)}
                         className="p-2 text-primary hover:bg-primary/10"
                         title="Play Recording"
                         data-testid={`button-play-${submission.id}`}
                       >
-                        <i className="fas fa-play text-xs"></i>
+                        <Play size={16} className="text-primary" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onViewDetails(submission)}
-                        className="p-2 text-muted-foreground hover:bg-accent"
-                        title="View Details"
-                        data-testid={`button-details-${submission.id}`}
-                      >
-                        <i className="fas fa-eye text-xs"></i>
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleApprove(submission)}
-                        disabled={updateStatusMutation.isPending}
-                        className="p-2 text-success hover:bg-success/10"
-                        title="Approve"
-                        data-testid={`button-approve-${submission.id}`}
-                      >
-                        <i className="fas fa-check text-xs"></i>
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleReject(submission)}
-                        disabled={updateStatusMutation.isPending}
-                        className="p-2 text-destructive hover:bg-destructive/10"
-                        title="Reject"
-                        data-testid={`button-reject-${submission.id}`}
-                      >
-                        <i className="fas fa-times text-xs"></i>
-                      </Button>
+                       
+                       
                     </div>
                   </TableCell>
                 </TableRow>

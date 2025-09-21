@@ -3,8 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import StatsCards from "@/components/stats-cards";
 import FilterControls from "@/components/filter-controls";
 import SubmissionsTable from "@/components/submissions-table";
-import AudioPlayerModal from "@/components/audio-player-modal";
-import SubmissionDetailsModal from "@/components/submission-details-modal";
+import AudioPlayerModal from "@/components/audio-player-modal"; 
 import { useAuth } from "@/hooks/use-auth";
 import type { Submission } from "@shared/schema";
 import { useLocation } from "wouter";
@@ -134,8 +133,7 @@ export default function Dashboard() {
           <SubmissionsTable
             data={submissionsData}
             isLoading={isLoadingSubmissions}
-            onPlayRecording={handlePlayRecording}
-            onViewDetails={handleViewDetails}
+            onPlayRecording={handlePlayRecording} 
             onPageChange={handlePageChange}
             currentOffset={filters.offset || 0}
             pageSize={filters.limit || 10}
@@ -149,11 +147,7 @@ export default function Dashboard() {
         submission={selectedSubmission}
       />
 
-      <SubmissionDetailsModal
-        isOpen={isDetailsModalOpen}
-        onClose={() => setIsDetailsModalOpen(false)}
-        submission={selectedSubmission}
-      />
+       
     </div>
   );
 }

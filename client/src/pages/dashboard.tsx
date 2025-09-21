@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import Sidebar from "@/components/sidebar";
+import { useQuery } from "@tanstack/react-query"; 
 import StatsCards from "@/components/stats-cards";
 import FilterControls from "@/components/filter-controls";
 import SubmissionsTable from "@/components/submissions-table";
@@ -8,6 +7,7 @@ import AudioPlayerModal from "@/components/audio-player-modal";
 import SubmissionDetailsModal from "@/components/submission-details-modal";
 import { useAuth } from "@/hooks/use-auth";
 import type { Submission } from "@shared/schema";
+import { useLocation } from "wouter";
 
 interface DashboardFilters {
   status?: string;
@@ -27,14 +27,37 @@ export default function Dashboard() {
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
   const [isAudioModalOpen, setIsAudioModalOpen] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const { data: submissionsData, isLoading: isLoadingSubmissions } = useQuery({
+  const { data: submissionsData, isLoading: isLoadingSubmissions, error: submissionsError } = useQuery({
     queryKey: ["/api/submissions", filters],
+    queryFn: async () => {
+      const searchParams = new URLSearchParams();
+      if (filters.status) searchParams.append('status', filters.status);
+      if (filters.fromDate) searchParams.append('fromDate', filters.fromDate);
+      if (filters.toDate) searchParams.append('toDate', filters.toDate);
+      if (filters.searchPhone) searchParams.append('searchPhone', filters.searchPhone);
+      if (filters.limit) searchParams.append('limit', filters.limit.toString());
+      if (filters.offset) searchParams.append('offset', filters.offset.toString());
+
+      const response = await fetch(`/api/submissions?${searchParams.toString()}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch submissions');
+      }
+      return response.json();
+    },
     enabled: !!user,
   });
 
   const { data: stats, isLoading: isLoadingStats } = useQuery({
     queryKey: ["/api/stats"],
+    queryFn: async () => {
+      const response = await fetch('/api/stats');
+      if (!response.ok) {
+        throw new Error('Failed to fetch stats');
+      }
+      return response.json();
+    },
     enabled: !!user,
   });
 
@@ -52,38 +75,43 @@ export default function Dashboard() {
     setIsDetailsModalOpen(true);
   };
 
+  const { logoutMutation } = useAuth();
+    const [location] = useLocation();
+  
+    const handleLogout = () => {
+      logoutMutation.mutate();
+    };
+  
+
   const handlePageChange = (newOffset: number) => {
     setFilters(prev => ({ ...prev, offset: newOffset }));
   };
 
   return (
     <div className="min-h-screen bg-background">
-      <Sidebar />
-      
-      <div className="pl-64">
+       
+      <div className="w-full">
         {/* Header */}
         <header className="bg-card border-b border-border px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-foreground" data-testid="text-dashboard-title">
-                Submissions Dashboard
+                Center Fruit - Submissions Dashboard
               </h1>
               <p className="text-muted-foreground">Manage Durga Puja contest recordings</p>
             </div>
             <div className="flex items-center space-x-4">
-              <button className="relative p-2 text-muted-foreground hover:text-foreground transition-colors">
-                <i className="fas fa-bell text-lg"></i>
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-destructive text-destructive-foreground text-xs rounded-full flex items-center justify-center">
-                  {stats?.pendingCount || 0}
-                </span>
-              </button>
+               
               <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-                  <i className="fas fa-user text-sm text-primary-foreground"></i>
-                </div>
-                <span className="text-sm font-medium text-foreground" data-testid="text-username">
-                  {user?.username || "Admin User"}
-                </span>
+                <button 
+            className="flex items-center space-x-3 px-3 py-2 rounded-md text-muted-foreground hover:bg-destructive hover:text-destructive-foreground transition-colors w-full text-left"
+            onClick={handleLogout}
+            disabled={logoutMutation.isPending}
+            data-testid="button-logout"
+          >
+            <i className="fas fa-sign-out-alt w-5 h-5"></i>
+            <span>{logoutMutation.isPending ? "Logging out..." : "Logout"}</span>
+          </button>
               </div>
             </div>
           </div>
@@ -91,6 +119,11 @@ export default function Dashboard() {
 
         {/* Main Content */}
         <div className="p-6 space-y-6">
+          {submissionsError && (
+            <div className="bg-destructive/15 border border-destructive text-destructive px-4 py-3 rounded-md">
+              {submissionsError instanceof Error ? submissionsError.message : 'An error occurred while fetching data'}
+            </div>
+          )}
           <StatsCards stats={stats} isLoading={isLoadingStats} />
           
           <FilterControls 

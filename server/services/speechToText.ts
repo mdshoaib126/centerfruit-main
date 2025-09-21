@@ -15,26 +15,24 @@ interface SpeechToTextResult {
 export class SpeechToTextService {
   private client: SpeechClient;
 
+  private async streamToBuffer(stream: ArrayBuffer): Promise<Buffer> {
+    return Buffer.from(stream);
+  }
+
   constructor() {
     // Initialize Google Cloud Speech client
-    // Use environment credentials for security
-    if (process.env.NODE_ENV === 'test' || process.env.DISABLE_EXTERNAL_CALLS === 'true') {
-      // In test mode, we'll return mock responses anyway
-      this.client = new SpeechClient();
-    } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-      // Production: use GOOGLE_APPLICATION_CREDENTIALS environment variable
-      this.client = new SpeechClient();
-    } else {
-      // Development: use the uploaded service account key if it exists
-      const keyPath = path.resolve(__dirname, '../config/service-account-key.json');
-      try {
-        this.client = new SpeechClient({
-          keyFilename: keyPath,
-        });
-      } catch (error) {
-        console.warn('No service account key found. Speech-to-Text will use mock responses.');
-        this.client = new SpeechClient();
-      }
+    const keyPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+    if (!keyPath) {
+      throw new Error('GOOGLE_APPLICATION_CREDENTIALS environment variable is not set');
+    }
+
+    try {
+      this.client = new SpeechClient({
+        keyFilename: keyPath,
+      });
+    } catch (error) {
+      console.error('Failed to initialize Google Speech client:', error);
+      throw error;
     }
   }
 
@@ -42,19 +40,21 @@ export class SpeechToTextService {
     // Test mode: return mock transcript for testing without external API
     if (process.env.NODE_ENV === 'test' || process.env.DISABLE_EXTERNAL_CALLS === 'true') {
       return {
-        transcript: "कच्चे घर में कुछ कच्चे कचौरी खाए।",
+        transcript: "चंदू के चाचा ने चंदू की चाची को चांदनी चौक में चांदी के चम्मच से चटनी चटाई।",
         confidence: 0.9,
       };
     }
 
     try {
       // Download the audio file
+      console.log('Downloading audio from:', recordingUrl);
       const audioResponse = await fetch(recordingUrl);
       if (!audioResponse.ok) {
         throw new Error(`Failed to download audio: ${audioResponse.statusText}`);
       }
       
-      const audioBuffer = await audioResponse.buffer();
+      const arrayBuffer = await audioResponse.arrayBuffer();
+      const audioBuffer = await this.streamToBuffer(arrayBuffer);
 
       // Configure the request
       const request = {
@@ -62,12 +62,13 @@ export class SpeechToTextService {
           content: audioBuffer.toString('base64'),
         },
         config: {
-          encoding: 'LINEAR16' as const,
-          sampleRateHertz: 8000,
+          encoding: 'MP3' as const,
+          sampleRateHertz: 44100,  // Standard MP3 sample rate
           languageCode: 'hi-IN', // Hindi for Durga Puja contest
           alternativeLanguageCodes: ['en-IN'], // Fallback to English
           enableAutomaticPunctuation: true,
-          model: 'latest_short',
+          model: 'default',
+          useEnhanced: true,
         },
       };
 
@@ -85,6 +86,12 @@ export class SpeechToTextService {
         throw new Error('No transcript alternative found');
       }
 
+      // Log the speech recognition result
+      console.log('Speech-to-Text Result:', {
+        transcript: alternative.transcript,
+        confidence: alternative.confidence || 0
+      });
+
       return {
         transcript: alternative.transcript,
         confidence: alternative.confidence || 0,
@@ -96,6 +103,7 @@ export class SpeechToTextService {
   }
 
   // Method to test local audio files
+  /*
   async transcribeLocalFile(filePath: string): Promise<SpeechToTextResult> {
     try {
       console.log(`Testing local audio file: ${filePath}`);
@@ -110,11 +118,12 @@ export class SpeechToTextService {
         },
         config: {
           encoding: 'MP3' as const, // For MP3 files
-          sampleRateHertz: 16000, // Standard rate for MP3
+          sampleRateHertz: 44100, // Standard rate for MP3
           languageCode: 'hi-IN', // Hindi for Durga Puja contest
           alternativeLanguageCodes: ['en-IN'], // Fallback to English
           enableAutomaticPunctuation: true,
-          model: 'latest_short',
+          model: 'default',
+          useEnhanced: true,
         },
       };
 
@@ -142,7 +151,7 @@ export class SpeechToTextService {
       console.error('Local file transcription error:', error);
       throw new Error(`Failed to transcribe local file: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-  }
+  } */
 }
 
 export const speechToTextService = new SpeechToTextService();

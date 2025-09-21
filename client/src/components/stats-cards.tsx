@@ -31,7 +31,7 @@ export default function StatsCards({ stats, isLoading }: StatsCardsProps) {
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <Card>
         <CardContent className="pt-6">
           <div className="flex items-center justify-between">
@@ -51,25 +51,7 @@ export default function StatsCards({ stats, isLoading }: StatsCardsProps) {
           </div>
         </CardContent>
       </Card>
-
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Pending Review</p>
-              <p className="text-2xl font-bold text-foreground" data-testid="stat-pending-count">
-                {stats?.pendingCount || 0}
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-              <i className="fas fa-clock text-yellow-600 text-lg"></i>
-            </div>
-          </div>
-          <div className="mt-4 flex items-center">
-            <span className="text-sm text-yellow-600 font-medium">Needs attention</span>
-          </div>
-        </CardContent>
-      </Card>
+ 
 
       <Card>
         <CardContent className="pt-6">

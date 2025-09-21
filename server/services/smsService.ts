@@ -13,7 +13,7 @@ export class SMSService {
 
   constructor() {
     this.apiKey = process.env.MSG91_API_KEY || process.env.MSG91_API_KEY_ENV_VAR || "default_key";
-    this.senderId = process.env.MSG91_SENDER_ID || "CNTFRT";
+    this.senderId = process.env.MSG91_SENDER_ID || "SBUZZT";
   }
 
   async sendResultSMS(phoneNumber: string, status: 'PASS' | 'FAIL', score?: number): Promise<SMSResult> {
@@ -39,9 +39,7 @@ export class SMSService {
         sender: this.senderId,
         short_url: "0",
         mobiles: phoneNumber.replace('+91', '').replace(/\s+/g, ''), // Clean phone number
-        var1: status === 'PASS' ? 'Congratulations!' : 'Better luck next time!',
-        var2: score ? score.toString() : 'N/A',
-        var3: 'Centerfruit Durga Puja Contest',
+        
       };
 
       const response = await fetch(this.baseUrl, {

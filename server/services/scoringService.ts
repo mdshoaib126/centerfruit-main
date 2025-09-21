@@ -5,7 +5,7 @@ interface ScoringResult {
 }
 
 export class ScoringService {
-  private expectedTongueTwister = "कच्चे घर में कुछ कच्चे कचौरी खाए, कच्चे घर में कुछ कच्चे कचौरी खाए। चंदू के चाचा ने चंदू की चाची को चांदनी चौक में चांदी के चम्मच से चटनी चटाई।";
+  private expectedTongueTwister = "चंदू के चाचा ने चंदू की चाची को चांदनी चौक में चांदी के चम्मच से चटनी चटाई।";
   private passThreshold = 70;
 
   // Levenshtein distance algorithm
@@ -36,8 +36,14 @@ export class ScoringService {
 
   // Calculate similarity percentage
   private calculateSimilarity(original: string, transcript: string): number {
-    const normalizedOriginal = original.toLowerCase().replace(/[^\w\s]/g, '').trim();
-    const normalizedTranscript = transcript.toLowerCase().replace(/[^\w\s]/g, '').trim();
+    // Only remove punctuation and whitespace, preserve Hindi characters
+    const normalizedOriginal = original.replace(/[।,.!?्]/g, '').replace(/\s+/g, ' ').trim();
+    const normalizedTranscript = transcript.replace(/[।,.!?्]/g, '').replace(/\s+/g, ' ').trim();
+
+    console.log('Scoring Comparison:', {
+      original: normalizedOriginal,
+      transcript: normalizedTranscript
+    });
 
     const maxLength = Math.max(normalizedOriginal.length, normalizedTranscript.length);
     if (maxLength === 0) return 0;
@@ -45,14 +51,31 @@ export class ScoringService {
     const distance = this.levenshteinDistance(normalizedOriginal, normalizedTranscript);
     const similarity = ((maxLength - distance) / maxLength) * 100;
     
+    console.log('Scoring Result:', {
+      distance,
+      maxLength,
+      similarity
+    });
+    
     return Math.max(0, Math.min(100, similarity));
   }
 
   // Score the transcript
   public scoreTranscript(transcript: string): ScoringResult {
+    console.log('Scoring input:', {
+      expected: this.expectedTongueTwister,
+      actual: transcript
+    });
+
     const similarity = this.calculateSimilarity(this.expectedTongueTwister, transcript);
     const score = Math.round(similarity);
     const status = score >= this.passThreshold ? 'PASS' : 'FAIL';
+
+    console.log('Final score:', {
+      score,
+      status,
+      similarity
+    });
 
     return {
       score,

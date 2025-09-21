@@ -28,6 +28,11 @@ export function registerRoutes(app: Express): Server {
   app.post("/ivr/recording", async (req, res) => {
     try {
       const { CallSid, RecordingUrl, From } = req.body;
+
+      console.log("📞 New Recording Webhook Received:");
+      console.log("CallSid:", CallSid);
+      console.log("Recording URL:", RecordingUrl);
+      console.log("From:", From); 
       
       if (!CallSid || !RecordingUrl || !From) {
         return res.status(400).json({ error: "Missing required fields: CallSid, RecordingUrl, From" });
@@ -198,12 +203,16 @@ export function registerRoutes(app: Express): Server {
 // Async processing function
 async function processSubmissionAsync(submissionId: string) {
   try {
+    console.log(`Starting processing for submission ${submissionId}`);
+    
     const submission = await storage.getSubmission(submissionId);
     if (!submission) {
       console.error("Submission not found for processing:", submissionId);
       return;
     }
 
+    console.log(`Processing recording URL: ${submission.recordingUrl}`);
+    
     // Step 1: Transcribe audio
     const transcriptResult = await speechToTextService.transcribeAudio(submission.recordingUrl);
     

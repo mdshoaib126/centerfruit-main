@@ -127,14 +127,18 @@ export class ExotelPollingService {
     const fromDate = new Date(fromTime).toISOString().slice(0, 19).replace('T', ' ');
     const toDate = new Date(toTime).toISOString().slice(0, 19).replace('T', ' ');
     
-    // Use the exact URL format with date filtering
-    const apiUrl = `https://${exotelUsername}:${exotelPassword}@api.exotel.com/v1/Accounts/expm61/Calls.json?DateCreated=gte:${fromDate};lte:${toDate}&SortBy=DateCreated:desc&PageSize=50`;
+    // Create authorization header using Basic Auth
+    const authHeader = 'Basic ' + Buffer.from(`${exotelUsername}:${exotelPassword}`).toString('base64');
+    
+    // Use clean URL without embedded credentials
+    const apiUrl = `https://api.exotel.com/v1/Accounts/expm61/Calls.json?DateCreated=gte:${encodeURIComponent(fromDate)};lte:${encodeURIComponent(toDate)}&SortBy=DateCreated:desc&PageSize=50`;
     
     console.log(`🔍 Fetching calls from ${fromDate} to ${toDate}`);
     
     const response = await fetch(apiUrl, {
       method: 'GET',
       headers: {
+        'Authorization': authHeader,
         'Content-Type': 'application/json',
       },
     });

@@ -1,6 +1,7 @@
 import type { Express } from "express";
-const twilio = require('twilio');
-const VoiceResponse = twilio.twiml.VoiceResponse;
+// @ts-ignore - Twilio has module resolution issues with ES6 imports
+import twilio from "twilio";
+const { VoiceResponse } = twilio.twiml;
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";

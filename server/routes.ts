@@ -268,7 +268,13 @@ app.post("/handle-gather", async (req, res) => {
           submission.score || undefined
         );
         if (!smsResult.success) {
-          console.error("SMS sending failed:", smsResult.error);
+          if (smsResult.error?.includes('Daily PASS SMS limit')) {
+            console.warn(`📱 SMS limit reached: ${smsResult.error}`);
+          } else {
+            console.error("SMS sending failed:", smsResult.error);
+          }
+        } else {
+          console.log(`📱 SMS sent successfully to ${submission.callerNumber} for ${status} status`);
         }
       }
 
@@ -324,6 +330,21 @@ app.post("/handle-gather", async (req, res) => {
     });
   });
 
+  // Get daily SMS stats
+  app.get("/api/sms-stats", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const stats = await smsService.getDailyPassSmsStats();
+      res.json(stats);
+    } catch (error) {
+      console.error("Get SMS stats error:", error);
+      res.status(500).json({ error: "Failed to fetch SMS stats" });
+    }
+  });
+
   const httpServer = createServer(app);
   
   // Start Exotel polling service
@@ -368,7 +389,13 @@ export async function processSubmissionAsync(submissionId: string) {
     );
 
     if (!smsResult.success) {
-      console.error("SMS sending failed for submission", submissionId, ":", smsResult.error);
+      if (smsResult.error?.includes('Daily PASS SMS limit')) {
+        console.warn(`📱 SMS limit reached for submission ${submissionId}: ${smsResult.error}`);
+      } else {
+        console.error("SMS sending failed for submission", submissionId, ":", smsResult.error);
+      }
+    } else {
+      console.log(`📱 SMS sent successfully to ${submission.callerNumber} for ${scoringResult.status} status`);
     }
 
     console.log(`Submission ${submissionId} processed successfully:`, {

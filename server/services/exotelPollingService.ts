@@ -117,7 +117,7 @@ export class ExotelPollingService {
 
   private async fetchExotelCalls(fromTime: string, toTime: string): Promise<ExotelCallDetail[]> {
     const exotelUsername = process.env.EXOTEL_USERNAME;
-    const exotelPassword = process.env.EXOTEL_PASSWORD;
+    const exotelPassword = process.env.EXOTEL_PASSWORD; 
     
     if (!exotelUsername || !exotelPassword) {
       throw new Error('Missing Exotel credentials in environment variables');
@@ -149,7 +149,7 @@ export class ExotelPollingService {
     return data.Calls || [];
   }
 
-  private async processNewCall(call: ExotelCallDetail) {
+  private async processNewCall(call: ExotelCallDetail) { 
     try {
       console.log(`📞 Processing new call: ${call.Sid} from ${call.From}`);
       

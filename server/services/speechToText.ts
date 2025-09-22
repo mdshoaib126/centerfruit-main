@@ -48,9 +48,35 @@ export class SpeechToTextService {
     try {
       // Download the audio file
       console.log('Downloading audio from:', recordingUrl);
-      const audioResponse = await fetch(recordingUrl);
+
+      // Check if this is an Exotel recording URL that requires authentication
+      const isExotelUrl = recordingUrl.includes('recordings.exotel.com');
+      let audioResponse;
+
+      if (isExotelUrl) {
+        // Use Exotel credentials for authenticated download
+        const exotelUsername = process.env.EXOTEL_USERNAME;
+        const exotelPassword = process.env.EXOTEL_PASSWORD;
+        
+        if (!exotelUsername || !exotelPassword) {
+          throw new Error('EXOTEL_USERNAME and EXOTEL_PASSWORD environment variables are required for Exotel recordings');
+        }
+
+        const authHeader = 'Basic ' + Buffer.from(`${exotelUsername}:${exotelPassword}`).toString('base64');
+        
+        audioResponse = await fetch(recordingUrl, {
+          method: 'GET',
+          headers: {
+            'Authorization': authHeader,
+          },
+        });
+      } else {
+        // Regular download for other URLs (like Twilio)
+        audioResponse = await fetch(recordingUrl);
+      }
+
       if (!audioResponse.ok) {
-        throw new Error(`Failed to download audio: ${audioResponse.statusText}`);
+        throw new Error(`Failed to download audio: ${audioResponse.status} ${audioResponse.statusText}`);
       }
       
       const arrayBuffer = await audioResponse.arrayBuffer();

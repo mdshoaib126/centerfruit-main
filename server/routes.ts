@@ -155,7 +155,7 @@ app.post("/handle-gather", async (req, res) => {
   // Exotel IVR webhook endpoint
   app.post("/ivr/recording", async (req, res) => {
     try {
-      const { CallSid, RecordingUrl, From } = req.body;
+      const {CallSid,RecordingUrl,From} = req.body;
 
       console.log("📞 New Recording Webhook Received:");
       console.log("CallSid:", CallSid);

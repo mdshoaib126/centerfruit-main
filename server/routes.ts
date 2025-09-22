@@ -1,4 +1,6 @@
 import type { Express } from "express";
+const twilio = require('twilio');
+const VoiceResponse = twilio.twiml.VoiceResponse;
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
@@ -23,6 +25,131 @@ export function registerRoutes(app: Express): Server {
     }
     next();
   });
+
+  app.post('/voice', (req, res) => {
+    const twiml = new VoiceResponse();
+
+    // Greeting
+    twiml.say(
+      { voice: 'alice', language: 'en-IN' },
+      'Welcome to Centerfruit Durga Puja Challenge. After the beep, please repeat the tongue twister and press pound when done.'
+    );
+
+    // Record 5 seconds max, then post to /handle-recording
+    twiml.record({
+      action: '/handle-recording',
+      method: 'POST',
+      maxLength: 5,
+      playBeep: true,
+      finishOnKey: '#'
+    });
+
+    // If nothing recorded
+    twiml.say('No recording was received. Goodbye.');
+    twiml.hangup();
+
+    res.type('text/xml');
+    res.send(twiml.toString());
+  });
+
+app.post("/handle-recording", async (req, res) => {
+  try {
+    const { RecordingUrl, CallSid, From } = req.body;
+
+    // Validate input
+    const validatedData = insertSubmissionSchema.pick({
+      callSid: true,
+      callerNumber: true,
+      recordingUrl: true,
+      status: true,
+    }).parse({
+      callSid: CallSid,
+      callerNumber: From,
+      recordingUrl: RecordingUrl,
+      status: "PENDING",
+    });
+
+    // Save submission
+    const submission = await storage.createSubmission(validatedData);
+    console.log("Saved submission:", submission);
+
+    // Build IVR menu
+    const twiml = new VoiceResponse();
+    const gather = twiml.gather({
+      numDigits: 1,
+      action: "/handle-gather",
+      method: "POST",
+      timeout: 10,
+    });
+    gather.say(
+      "To listen to your recording, press 1. To submit, press 2. To record again, press 3."
+    );
+
+    twiml.say("We did not receive input. Goodbye.");
+    twiml.hangup();
+
+    res.type("text/xml").send(twiml.toString());
+  } catch (err) {
+    console.error("handle-recording error:", err);
+    res.status(500).send("Server error");
+  }
+});
+
+app.post("/handle-gather", async (req, res) => {
+  try {
+    const { Digits, CallSid } = req.body;
+    const twiml = new VoiceResponse();
+
+    const submission = await storage.getSubmission(CallSid);
+
+    if (!submission) {
+      twiml.say("Could not find your recording. Goodbye.");
+      twiml.hangup();
+      return res.type("text/xml").send(twiml.toString());
+    }
+
+    const recordingUrl = submission.recordingUrl;
+
+    if (Digits === "1") {
+      // Replay recording
+      twiml.say("Playing your recording now.");
+      twiml.play({}, recordingUrl);
+      twiml.redirect({ method: "POST" }, "/handle-recording");
+    } else if (Digits === "2") {
+      // Submit recording
+      await storage.updateSubmissionStatus(CallSid, "PENDING");
+      twiml.say("Thank you for submitting your recording. Goodbye.");
+      twiml.hangup();
+
+      // Kick off async process
+      processSubmissionAsync(CallSid).catch((err) =>
+        console.error("Async processing error:", err)
+      );
+    } else if (Digits === "3") {
+      // Record again
+      twiml.say(
+        "Please record your message after the beep and press pound when done."
+      );
+      twiml.record({
+        action: "/handle-recording",
+        method: "POST",
+        maxLength: 5,
+        playBeep: true,
+        finishOnKey: "#",
+      });
+    } else {
+      twiml.say("Invalid choice. Goodbye.");
+      twiml.hangup();
+    }
+
+    res.type("text/xml").send(twiml.toString());
+  } catch (err) {
+    console.error("handle-gather error:", err);
+    res.status(500).send("Server error");
+  }
+});
+
+
 
   // Exotel IVR webhook endpoint
   app.post("/ivr/recording", async (req, res) => {

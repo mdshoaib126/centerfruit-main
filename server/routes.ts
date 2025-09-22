@@ -39,7 +39,7 @@ export function registerRoutes(app: Express): Server {
     twiml.record({
       action: '/handle-recording',
       method: 'POST',
-      maxLength: 5,
+      maxLength: 15,
       playBeep: true,
       finishOnKey: '#'
     });

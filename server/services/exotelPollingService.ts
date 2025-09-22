@@ -127,13 +127,13 @@ export class ExotelPollingService {
     const fromDate = new Date(fromTime).toISOString().slice(0, 19).replace('T', ' ');
     const toDate = new Date(toTime).toISOString().slice(0, 19).replace('T', ' ');
     
-    // Create authorization header using Basic Auth
+    // Use the exact URL format that works with Exotel - without date filtering for now
+    const apiUrl = `https://api.exotel.com/v1/Accounts/expm61/Calls.json`;
+    
+    console.log(`🔍 Fetching recent calls from Exotel`);
+    
+    // Create authorization header using Basic Auth (the same as embedded credentials)
     const authHeader = 'Basic ' + Buffer.from(`${exotelUsername}:${exotelPassword}`).toString('base64');
-    
-    // Use clean URL without embedded credentials
-    const apiUrl = `https://api.exotel.com/v1/Accounts/expm61/Calls.json?DateCreated=gte:${encodeURIComponent(fromDate)};lte:${encodeURIComponent(toDate)}&SortBy=DateCreated:desc&PageSize=50`;
-    
-    console.log(`🔍 Fetching calls from ${fromDate} to ${toDate}`);
     
     const response = await fetch(apiUrl, {
       method: 'GET',
@@ -144,13 +144,25 @@ export class ExotelPollingService {
     });
 
     if (!response.ok) {
-      throw new Error(`Exotel API error: ${response.status} ${response.statusText}`);
+      const errorText = await response.text();
+      throw new Error(`Exotel API error: ${response.status} ${response.statusText} - ${errorText}`);
     }
 
     const data: ExotelApiResponse = await response.json();
-    console.log(`📊 Found ${data.Calls?.length || 0} calls in response`);
+    console.log(`📊 Found ${data.Calls?.length || 0} total calls in response`);
     
-    return data.Calls || [];
+    // Filter calls by time range manually since API date filtering seems to have issues
+    const fromTimestamp = new Date(fromTime).getTime();
+    const toTimestamp = new Date(toTime).getTime();
+    
+    const filteredCalls = (data.Calls || []).filter(call => {
+      const callTimestamp = new Date(call.DateCreated).getTime();
+      return callTimestamp >= fromTimestamp && callTimestamp <= toTimestamp;
+    });
+    
+    console.log(`📊 Found ${filteredCalls.length} calls in time range ${fromDate} to ${toDate}`);
+    
+    return filteredCalls;
   }
 
   private async processNewCall(call: ExotelCallDetail) { 

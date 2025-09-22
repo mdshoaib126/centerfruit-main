@@ -1,7 +1,7 @@
-import type { Express } from "express";
+import type { Express } from "express";/* 
 // @ts-ignore - Twilio has module resolution issues with ES6 imports
 import twilio from "twilio";
-const { VoiceResponse } = twilio.twiml;
+const { VoiceResponse } = twilio.twiml; */
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
@@ -26,7 +26,7 @@ export function registerRoutes(app: Express): Server {
     }
     next();
   });
-
+/* 
   app.post('/voice', (req, res) => {
     const twiml = new VoiceResponse();
 
@@ -150,7 +150,7 @@ app.post("/handle-gather", async (req, res) => {
   }
 });
 
-
+ */
 
   // Exotel IVR webhook endpoint
   app.post("/ivr/recording", async (req, res) => {

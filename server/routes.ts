@@ -8,6 +8,7 @@ import { setupAuth } from "./auth";
 import { speechToTextService } from "./services/speechToText";
 import { smsService } from "./services/smsService";
 import { scoringService } from "./services/scoringService";
+import { exotelPollingService } from "./services/exotelPollingService";
 import { insertSubmissionSchema, updateSubmissionStatusSchema } from "@shared/schema";
 import { z } from "zod";
 
@@ -324,11 +325,17 @@ app.post("/handle-gather", async (req, res) => {
   });
 
   const httpServer = createServer(app);
+  
+  // Start Exotel polling service
+  exotelPollingService.startPolling().catch(err => 
+    console.error('Failed to start Exotel polling service:', err)
+  );
+  
   return httpServer;
 }
 
-// Async processing function
-async function processSubmissionAsync(submissionId: string) {
+// Async processing function - exported for use by polling service
+export async function processSubmissionAsync(submissionId: string) {
   try {
     console.log(`Starting processing for submission ${submissionId}`);
     

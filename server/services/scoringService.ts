@@ -2,10 +2,15 @@ interface ScoringResult {
   score: number;
   status: 'PASS' | 'FAIL';
   similarity: number;
+  matchedTwister?: string;
 }
 
 export class ScoringService {
-  private expectedTongueTwister = "পাখি পাকা পেঁপে খায় তেলে  চুল তাজা, জলে চুন তাজা কাঁচা গাব পাকা গাব";
+  private tongueTwisters = [
+    "পাখি পাকা পেঁপে খায়",
+    "তেলে চুল তাজা, জলে চুন তাজা", 
+    "কাঁচা গাব পাকা গাব"
+  ];
   private passThreshold = 70;
 
   // Levenshtein distance algorithm
@@ -60,38 +65,73 @@ export class ScoringService {
     return Math.max(0, Math.min(100, similarity));
   }
 
-  // Score the transcript
+  // Score the transcript against all tongue twisters (must be said 3 times) and return the best match
   public scoreTranscript(transcript: string): ScoringResult {
-    console.log('Scoring input:', {
-      expected: this.expectedTongueTwister,
-      actual: transcript
-    });
+    console.log('Scoring input transcript:', transcript);
+    console.log('Checking against tongue twisters (must be said 3 times):', this.tongueTwisters);
 
-    const similarity = this.calculateSimilarity(this.expectedTongueTwister, transcript);
-    const score = Math.round(similarity);
-    const status = score >= this.passThreshold ? 'PASS' : 'FAIL';
-
-    console.log('Final score:', {
-      score,
-      status,
-      similarity
-    });
-
-    return {
-      score,
-      status,
-      similarity,
+    let bestResult: ScoringResult = {
+      score: 0,
+      status: 'FAIL',
+      similarity: 0,
+      matchedTwister: undefined
     };
+
+    // Check transcript against each tongue twister repeated 3 times
+    for (const tongueTwister of this.tongueTwisters) {
+      // Create expected pattern: tongue twister repeated 3 times
+      const expectedThreeTimes = `${tongueTwister} ${tongueTwister} ${tongueTwister}`;
+      
+      console.log(`Expected 3x pattern: "${expectedThreeTimes}"`);
+      
+      const similarity = this.calculateSimilarity(expectedThreeTimes, transcript);
+      const score = Math.round(similarity);
+      const status = score >= this.passThreshold ? 'PASS' : 'FAIL';
+
+      console.log(`Comparison with "${tongueTwister}" (3x):`, {
+        score,
+        status,
+        similarity
+      });
+
+      // Keep the best match (highest score)
+      if (score > bestResult.score) {
+        bestResult = {
+          score,
+          status,
+          similarity,
+          matchedTwister: tongueTwister
+        };
+      }
+    }
+
+    console.log('Best match result (3x requirement):', bestResult);
+
+    return bestResult;
   }
 
-  // Get expected tongue twister
+  // Get all tongue twisters
+  public getTongueTwisters(): string[] {
+    return this.tongueTwisters;
+  }
+
+  // Get expected tongue twister (return all tongue twisters with 3x requirement)
   public getExpectedTongueTwister(): string {
-    return this.expectedTongueTwister;
+    return this.tongueTwisters.map(twister => `${twister} (3 times)`).join(', ');
   }
 
   // Get pass threshold
   public getPassThreshold(): number {
     return this.passThreshold;
+  }
+
+  // Get a specific tongue twister repeated 3 times (for testing or display)
+  public getTongueTwisterThreeTimes(index: number): string {
+    if (index < 0 || index >= this.tongueTwisters.length) {
+      throw new Error(`Invalid tongue twister index: ${index}`);
+    }
+    const twister = this.tongueTwisters[index];
+    return `${twister} ${twister} ${twister}`;
   }
 }
 

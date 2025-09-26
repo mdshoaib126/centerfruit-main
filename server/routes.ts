@@ -28,7 +28,7 @@ export function registerRoutes(app: Express): Server {
     }
     next();
   });
-
+  /*
   // Tongue twister audio files
   const tongueTwisters = [
     `${process.env.BASE_URL || 'http://localhost:5000'}/audios/Pakhi Paka Pepe khay.mp3`,
@@ -61,7 +61,7 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-
+  */
 
   // Exotel IVR webhook endpoint
   app.post("/ivr/recording", async (req, res) => {

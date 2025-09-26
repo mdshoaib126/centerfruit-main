@@ -47,9 +47,9 @@ export function registerRoutes(app: Express): Server {
   app.use('/audios', express.static('server/audios'));
 
   // Main IVR entry point - Greetings and random tongue twister
-  app.all('/voice', (req, res) => {
+  app.get('/voice', (req, res) => {
     try {
-      const { CallSid, From } = req.method === 'POST' ? req.body : req.query;
+      const { CallSid, From } = req.query;
       
       // Randomly select a tongue twister and store in session
       const randomIndex = Math.floor(Math.random() * tongueTwisters.length);
@@ -71,13 +71,13 @@ export function registerRoutes(app: Express): Server {
         numDigits: 1,
         timeout: 3,
         action: `/voice/gather?twister=${randomIndex}`,
-        method: 'POST'
+        method: 'GET'
       });
       gather.play(audioUrls.press1);
       
       // If no input in 3 seconds, auto proceed to recording
       twiml.redirect({
-        method: 'POST'
+        method: 'GET'
       }, `/voice/record?twister=${randomIndex}`);
 
       res.type('text/xml');
@@ -92,9 +92,9 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Handle user input (press 1 to listen again)  
-  app.post('/voice/gather', (req, res) => {
+  app.get('/voice/gather', (req, res) => {
     try {
-      const { Digits, CallSid, From } = req.body;
+      const { Digits, CallSid, From } = req.query;
       const twisterIndex = parseInt(req.query.twister as string) || 0;
       const selectedTwisterUrl = tongueTwisters[twisterIndex];
       
@@ -112,18 +112,18 @@ export function registerRoutes(app: Express): Server {
           numDigits: 1,
           timeout: 3,
           action: `/voice/gather?twister=${twisterIndex}`,
-          method: 'POST'
+          method: 'GET'
         });
         gather.play(audioUrls.press1);
         
         // Auto proceed to recording after timeout
         twiml.redirect({
-          method: 'POST'
+          method: 'GET'
         }, `/voice/record?twister=${twisterIndex}`);
       } else {
         // Any other digit or timeout, proceed to recording
         twiml.redirect({
-          method: 'POST'
+          method: 'GET'
         }, `/voice/record?twister=${twisterIndex}`);
       }
 
@@ -139,9 +139,9 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Recording phase - Beep and record user's attempt
-  app.post('/voice/record', (req, res) => {
+  app.get('/voice/record', (req, res) => {
     try {
-      const { CallSid, From } = req.body;
+      const { CallSid, From } = req.query;
       const twisterIndex = parseInt(req.query.twister as string) || 0;
       
       console.log(`🎙️ Starting recording for CallSid: ${CallSid}, Twister Index: ${twisterIndex}`);
@@ -151,7 +151,7 @@ export function registerRoutes(app: Express): Server {
       // Record user's attempt (3 times the tongue twister)
       twiml.record({
         action: '/voice/complete',
-        method: 'POST',
+        method: 'GET',
         maxLength: 30, // 30 seconds max
         finishOnKey: '#',
         recordingStatusCallback: '/ivr/recording',
@@ -174,9 +174,9 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Complete the call - Thank you message
-  app.post('/voice/complete', (req, res) => {
+  app.get('/voice/complete', (req, res) => {
     try {
-      const { CallSid, RecordingUrl } = req.body;
+      const { CallSid, RecordingUrl } = req.query;
       
       console.log(`✅ Recording completed for CallSid: ${CallSid}`);
       console.log(`🎵 Recording URL: ${RecordingUrl}`);

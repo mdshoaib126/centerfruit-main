@@ -40,9 +40,9 @@ export function registerRoutes(app: Express): Server {
   app.use('/audios', express.static('server/audios'));
 
   // Simple API Route - returns random audio file URL as plain text
-  app.post('/voice', (req, res) => {
+  app.all('/voice', (req, res) => {
     try {
-      const { CallSid, From } = req.body;
+      const { CallSid, From } = req.method === 'POST' ? req.body : req.query;
       
       // Randomly select a tongue twister
       const randomIndex = Math.floor(Math.random() * tongueTwisters.length);
@@ -257,10 +257,10 @@ export function registerRoutes(app: Express): Server {
 
   const httpServer = createServer(app);
   
-  // Start Exotel polling service
-  exotelPollingService.startPolling().catch(err => 
-    console.error('Failed to start Exotel polling service:', err)
-  );
+  // Start Exotel polling service - temporarily disabled to prevent crashes due to missing service-account-key.json
+  // exotelPollingService.startPolling().catch(err => 
+  //   console.error('Failed to start Exotel polling service:', err)
+  // );
   
   return httpServer;
 }

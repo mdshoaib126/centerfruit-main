@@ -3,7 +3,7 @@ import { randomUUID } from "crypto";
 import session from "express-session";
 import createMemoryStore from "memorystore";
 import { db } from "./db";
-import { eq, and, gte, lte, ilike, desc, count } from "drizzle-orm";
+import { eq, and, gte, lte, ilike, desc, count, sql } from "drizzle-orm";
 
 const MemoryStore = createMemoryStore(session);
 
@@ -44,8 +44,24 @@ export class DatabaseStorage implements IStorage {
       checkPeriod: 86400000,
     });
     
+    // Test database connection
+    this.testDatabaseConnection();
+    
     // Initialize database with default admin and sample data
     this.initializeDatabase();
+  }
+
+  private async testDatabaseConnection() {
+    try {
+      console.log('🔍 Testing database connection...');
+      const { db } = await import('./db');
+      await db.execute(sql`SELECT 1 as test`);
+      console.log('✅ Database connection successful');
+    } catch (error) {
+      console.error('❌ Database connection failed:', error);
+      console.error('DATABASE_URL:', process.env.DATABASE_URL ? 'Set' : 'Not set');
+      // Don't throw here, let the app start but log the issue
+    }
   }
 
   private async initializeDatabase() {
@@ -129,9 +145,6 @@ export class DatabaseStorage implements IStorage {
     limit?: number;
     offset?: number;
   }): Promise<{ submissions: Submission[]; total: number }> {
-    let query = db.select().from(submissions);
-    let countQuery = db.select({ count: count() }).from(submissions);
-    
     // Build where conditions
     const conditions = [];
     
@@ -151,28 +164,31 @@ export class DatabaseStorage implements IStorage {
       conditions.push(lte(submissions.createdAt, new Date(filters.toDate)));
     }
     
-    // Apply conditions if any exist
-    if (conditions.length > 0) {
-      const whereClause = conditions.length === 1 ? conditions[0] : and(...conditions);
-      query = query.where(whereClause);
-      countQuery = countQuery.where(whereClause);
-    }
-     
+    const whereClause = conditions.length === 0 ? undefined : 
+                       conditions.length === 1 ? conditions[0] : and(...conditions);
+    
+    // Get total count
+    const countQuery = whereClause 
+      ? db.select({ count: count() }).from(submissions).where(whereClause)
+      : db.select({ count: count() }).from(submissions);
+    
     const [totalResult] = await countQuery;
     const total = totalResult.count;
     
-    // Apply sorting and pagination
-    query = query.orderBy(desc(submissions.createdAt));
+    // Build main query with chaining
+    let mainQuery = db.select().from(submissions);
     
-    if (filters?.limit) {
-      query = query.limit(filters.limit);
+    if (whereClause) {
+      mainQuery = mainQuery.where(whereClause) as any;
     }
     
-    if (filters?.offset) {
-      query = query.offset(filters.offset);
-    }
+    // Chain all the query modifiers
+    const finalQuery = mainQuery
+      .orderBy(desc(submissions.createdAt))
+      .limit(filters?.limit || 50)
+      .offset(filters?.offset || 0);
     
-    const submissionResults = await query;
+    const submissionResults = await finalQuery;
     
     return { submissions: submissionResults, total };
   }

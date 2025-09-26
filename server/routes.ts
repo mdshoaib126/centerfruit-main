@@ -1,7 +1,7 @@
-import type { Express } from "express";/* 
+import type { Express } from "express";
 // @ts-ignore - Twilio has module resolution issues with ES6 imports
 import twilio from "twilio";
-const { VoiceResponse } = twilio.twiml; */
+const { VoiceResponse } = twilio.twiml;
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
@@ -27,151 +27,46 @@ export function registerRoutes(app: Express): Server {
     }
     next();
   });
-/* 
+
+  // Tongue twister audio files
+  const tongueTwisters = [
+    `${process.env.BASE_URL || 'http://localhost:5000'}/audios/Pakhi Paka Pepe khay.wav`,
+    `${process.env.BASE_URL || 'http://localhost:5000'}/audios/Tele chultaja jole chun taja.wav`,
+    `${process.env.BASE_URL || 'http://localhost:5000'}/audios/Kacha gab paka gab.wav`
+  ];
+
+  // Serve static audio files
+  app.use('/audios', require('express').static('server/audios'));
+
+  // Simple API Route - returns random audio file URL
   app.post('/voice', (req, res) => {
-    const twiml = new VoiceResponse();
+    try {
+      const { CallSid, From } = req.body;
+      
+      // Randomly select a tongue twister
+      const randomIndex = Math.floor(Math.random() * tongueTwisters.length);
+      const selectedTwisterUrl = tongueTwisters[randomIndex];
+      
+      console.log(`📞 Request from: ${CallSid} - ${From}`);
+      console.log(`🎵 Random audio selected: ${selectedTwisterUrl}`);
 
-    // Greeting
-    twiml.say(
-      { voice: 'alice', language: 'bn-IN' },
-      'সেন্টারফ্রুট দুর্গাপূজা চ্যালেঞ্জে স্বাগতম। বিপ শব্দের পর এই জিহ্বা ভাঁজিয়ে দেওয়া বাক্যটি বলুন: পাখি পাকা পেঁপে খায় তেলে চুল তাজা, জলে চুন তাজা কাঁচা গাব পাকা গাব। শেষে হ্যাশ চাপুন।'
-    );
-
-    // Record 5 seconds max, then post to /handle-recording
-    twiml.record({
-      action: '/handle-recording',
-      method: 'POST',
-      maxLength: 15,
-      playBeep: true,
-      finishOnKey: '#'
-    });
-
-    // If nothing recorded
-    twiml.say(
-      { voice: 'alice', language: 'bn-IN' },
-      'কোনো রেকর্ডিং পাওয়া যায়নি। ধন্যবাদ।'
-    );
-    twiml.hangup();
-
-    res.type('text/xml');
-    res.send(twiml.toString());
+      // Return JSON with random audio URL
+      res.json({
+        success: true,
+        audioUrl: selectedTwisterUrl,
+        index: randomIndex
+      });
+      
+    } catch (error) {
+      console.error('Voice route error:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Server error' 
+      });
+    }
   });
 
-app.post("/handle-recording", async (req, res) => {
-  try {
-    const { RecordingUrl, CallSid, From } = req.body;
 
-    // Validate input
-    const validatedData = insertSubmissionSchema.pick({
-      callSid: true,
-      callerNumber: true,
-      recordingUrl: true,
-      status: true,
-    }).parse({
-      callSid: CallSid,
-      callerNumber: From,
-      recordingUrl: RecordingUrl,
-      status: "PENDING",
-    });
-
-    // Save submission
-    const submission = await storage.createSubmission(validatedData);
-    console.log("Saved submission:", submission);
-
-    // Build IVR menu
-    const twiml = new VoiceResponse();
-    const gather = twiml.gather({
-      numDigits: 1,
-      action: "/handle-gather",
-      method: "POST",
-      timeout: 10,
-    });
-    gather.say(
-      { voice: 'alice', language: 'bn-IN' },
-      "আপনার রেকর্ডিং শুনতে ১ চাপুন। জমা দিতে ২ চাপুন। আবার রেকর্ড করতে ৩ চাপুন।"
-    );
-
-    twiml.say(
-      { voice: 'alice', language: 'bn-IN' },
-      "আমরা কোনো ইনপুট পাইনি। ধন্যবাদ।"
-    );
-    twiml.hangup();
-
-    res.type("text/xml").send(twiml.toString());
-  } catch (err) {
-    console.error("handle-recording error:", err);
-    res.status(500).send("Server error");
-  }
-});
-
-app.post("/handle-gather", async (req, res) => {
-  try {
-    const { Digits, CallSid } = req.body;
-    const twiml = new VoiceResponse();
-
-    const submission = await storage.getSubmission(CallSid);
-
-    if (!submission) {
-      twiml.say(
-        { voice: 'alice', language: 'bn-IN' },
-        "আপনার রেকর্ডিং খুঁজে পাওয়া যায়নি। ধন্যবাদ।"
-      );
-      twiml.hangup();
-      return res.type("text/xml").send(twiml.toString());
-    }
-
-    const recordingUrl = submission.recordingUrl;
-
-    if (Digits === "1") {
-      // Replay recording
-      twiml.say(
-        { voice: 'alice', language: 'bn-IN' },
-        "এখন আপনার রেকর্ডিং বাজানো হচ্ছে।"
-      );
-      twiml.play({}, recordingUrl);
-      twiml.redirect({ method: "POST" }, "/handle-recording");
-    } else if (Digits === "2") {
-      // Submit recording
-      await storage.updateSubmissionStatus(CallSid, "PENDING");
-      twiml.say(
-        { voice: 'alice', language: 'bn-IN' },
-        "আপনার রেকর্ডিং জমা দেওয়ার জন্য ধন্যবাদ। বিদায়।"
-      );
-      twiml.hangup();
-
-      // Kick off async process
-      processSubmissionAsync(CallSid).catch((err) =>
-        console.error("Async processing error:", err)
-      );
-    } else if (Digits === "3") {
-      // Record again
-      twiml.say(
-        { voice: 'alice', language: 'bn-IN' },
-        "বিপ শব্দের পর আপনার বার্তা রেকর্ড করুন এবং শেষে হ্যাশ চাপুন।"
-      );
-      twiml.record({
-        action: "/handle-recording",
-        method: "POST",
-        maxLength: 5,
-        playBeep: true,
-        finishOnKey: "#",
-      });
-    } else {
-      twiml.say(
-        { voice: 'alice', language: 'bn-IN' },
-        "ভুল পছন্দ। ধন্যবাদ।"
-      );
-      twiml.hangup();
-    }
-
-    res.type("text/xml").send(twiml.toString());
-  } catch (err) {
-    console.error("handle-gather error:", err);
-    res.status(500).send("Server error");
-  }
-});
-
- */
 
   // Exotel IVR webhook endpoint
   app.post("/ivr/recording", async (req, res) => {

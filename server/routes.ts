@@ -1,4 +1,5 @@
 import type { Express } from "express";
+import express from "express";
 // @ts-ignore - Twilio has module resolution issues with ES6 imports
 import twilio from "twilio";
 const { VoiceResponse } = twilio.twiml;
@@ -36,7 +37,7 @@ export function registerRoutes(app: Express): Server {
   ];
 
   // Serve static audio files
-  app.use('/audios', require('express').static('server/audios'));
+  app.use('/audios', express.static('server/audios'));
 
   // Simple API Route - returns random audio file URL as plain text
   app.post('/voice', (req, res) => {

@@ -5,7 +5,7 @@ interface ScoringResult {
 }
 
 export class ScoringService {
-  private expectedTongueTwister = "चंदू के चाचा ने चंदू की चाची को चांदनी चौक में चांदी के चम्मच से चटनी चटाई।";
+  private expectedTongueTwister = "পাখি পাকা পেঁপে খায় তেলে  চুল তাজা, জলে চুন তাজা কাঁচা গাব পাকা গাব";
   private passThreshold = 70;
 
   // Levenshtein distance algorithm
@@ -36,9 +36,9 @@ export class ScoringService {
 
   // Calculate similarity percentage
   private calculateSimilarity(original: string, transcript: string): number {
-    // Only remove punctuation and whitespace, preserve Hindi characters
-    const normalizedOriginal = original.replace(/[।,.!?्]/g, '').replace(/\s+/g, ' ').trim();
-    const normalizedTranscript = transcript.replace(/[।,.!?्]/g, '').replace(/\s+/g, ' ').trim();
+    // Only remove punctuation and whitespace, preserve Bengali characters
+    const normalizedOriginal = original.replace(/[।,.!?়্ঃ]/g, '').replace(/\s+/g, ' ').trim();
+    const normalizedTranscript = transcript.replace(/[।,.!?়্ঃ]/g, '').replace(/\s+/g, ' ').trim();
 
     console.log('Scoring Comparison:', {
       original: normalizedOriginal,

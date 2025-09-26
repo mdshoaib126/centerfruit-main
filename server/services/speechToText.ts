@@ -90,7 +90,7 @@ export class SpeechToTextService {
         config: {
           encoding: 'MP3' as const,
           sampleRateHertz: 44100,  // Standard MP3 sample rate
-          languageCode: 'hi-IN', // Hindi for Durga Puja contest
+          languageCode: 'bn-IN', // Bengali for Durga Puja contest
           alternativeLanguageCodes: ['en-IN'], // Fallback to English
           enableAutomaticPunctuation: true,
           model: 'default',

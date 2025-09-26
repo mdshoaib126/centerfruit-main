@@ -33,8 +33,8 @@ export function registerRoutes(app: Express): Server {
 
     // Greeting
     twiml.say(
-      { voice: 'alice', language: 'en-IN' },
-      'Welcome to Centerfruit Durga Puja Challenge. After the beep, please repeat the tongue twister and press pound when done.'
+      { voice: 'alice', language: 'bn-IN' },
+      'সেন্টারফ্রুট দুর্গাপূজা চ্যালেঞ্জে স্বাগতম। বিপ শব্দের পর এই জিহ্বা ভাঁজিয়ে দেওয়া বাক্যটি বলুন: পাখি পাকা পেঁপে খায় তেলে চুল তাজা, জলে চুন তাজা কাঁচা গাব পাকা গাব। শেষে হ্যাশ চাপুন।'
     );
 
     // Record 5 seconds max, then post to /handle-recording
@@ -47,7 +47,10 @@ export function registerRoutes(app: Express): Server {
     });
 
     // If nothing recorded
-    twiml.say('No recording was received. Goodbye.');
+    twiml.say(
+      { voice: 'alice', language: 'bn-IN' },
+      'কোনো রেকর্ডিং পাওয়া যায়নি। ধন্যবাদ।'
+    );
     twiml.hangup();
 
     res.type('text/xml');
@@ -84,10 +87,14 @@ app.post("/handle-recording", async (req, res) => {
       timeout: 10,
     });
     gather.say(
-      "To listen to your recording, press 1. To submit, press 2. To record again, press 3."
+      { voice: 'alice', language: 'bn-IN' },
+      "আপনার রেকর্ডিং শুনতে ১ চাপুন। জমা দিতে ২ চাপুন। আবার রেকর্ড করতে ৩ চাপুন।"
     );
 
-    twiml.say("We did not receive input. Goodbye.");
+    twiml.say(
+      { voice: 'alice', language: 'bn-IN' },
+      "আমরা কোনো ইনপুট পাইনি। ধন্যবাদ।"
+    );
     twiml.hangup();
 
     res.type("text/xml").send(twiml.toString());
@@ -105,7 +112,10 @@ app.post("/handle-gather", async (req, res) => {
     const submission = await storage.getSubmission(CallSid);
 
     if (!submission) {
-      twiml.say("Could not find your recording. Goodbye.");
+      twiml.say(
+        { voice: 'alice', language: 'bn-IN' },
+        "আপনার রেকর্ডিং খুঁজে পাওয়া যায়নি। ধন্যবাদ।"
+      );
       twiml.hangup();
       return res.type("text/xml").send(twiml.toString());
     }
@@ -114,13 +124,19 @@ app.post("/handle-gather", async (req, res) => {
 
     if (Digits === "1") {
       // Replay recording
-      twiml.say("Playing your recording now.");
+      twiml.say(
+        { voice: 'alice', language: 'bn-IN' },
+        "এখন আপনার রেকর্ডিং বাজানো হচ্ছে।"
+      );
       twiml.play({}, recordingUrl);
       twiml.redirect({ method: "POST" }, "/handle-recording");
     } else if (Digits === "2") {
       // Submit recording
       await storage.updateSubmissionStatus(CallSid, "PENDING");
-      twiml.say("Thank you for submitting your recording. Goodbye.");
+      twiml.say(
+        { voice: 'alice', language: 'bn-IN' },
+        "আপনার রেকর্ডিং জমা দেওয়ার জন্য ধন্যবাদ। বিদায়।"
+      );
       twiml.hangup();
 
       // Kick off async process
@@ -130,7 +146,8 @@ app.post("/handle-gather", async (req, res) => {
     } else if (Digits === "3") {
       // Record again
       twiml.say(
-        "Please record your message after the beep and press pound when done."
+        { voice: 'alice', language: 'bn-IN' },
+        "বিপ শব্দের পর আপনার বার্তা রেকর্ড করুন এবং শেষে হ্যাশ চাপুন।"
       );
       twiml.record({
         action: "/handle-recording",
@@ -140,7 +157,10 @@ app.post("/handle-gather", async (req, res) => {
         finishOnKey: "#",
       });
     } else {
-      twiml.say("Invalid choice. Goodbye.");
+      twiml.say(
+        { voice: 'alice', language: 'bn-IN' },
+        "ভুল পছন্দ। ধন্যবাদ।"
+      );
       twiml.hangup();
     }
 

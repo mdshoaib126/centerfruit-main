@@ -129,7 +129,10 @@ export class DatabaseStorage implements IStorage {
     limit?: number;
     offset?: number;
   }): Promise<{ submissions: Submission[]; total: number }> {
-  // Build where conditions
+    let query = db.select().from(submissions);
+    let countQuery = db.select({ count: count() }).from(submissions);
+    
+    // Build where conditions
     const conditions = [];
     
     if (filters?.status) {
@@ -148,31 +151,28 @@ export class DatabaseStorage implements IStorage {
       conditions.push(lte(submissions.createdAt, new Date(filters.toDate)));
     }
     
-    const whereClause = conditions.length === 0 ? undefined : 
-                       conditions.length === 1 ? conditions[0] : and(...conditions);
-    
-    // Get total count
-    const countQuery = whereClause 
-      ? db.select({ count: count() }).from(submissions).where(whereClause)
-      : db.select({ count: count() }).from(submissions);
-    
+    // Apply conditions if any exist
+    if (conditions.length > 0) {
+      const whereClause = conditions.length === 1 ? conditions[0] : and(...conditions);
+      query = query.where(whereClause);
+      countQuery = countQuery.where(whereClause);
+    }
+     
     const [totalResult] = await countQuery;
     const total = totalResult.count;
     
-    // Build main query with chaining
-    let mainQuery = db.select().from(submissions);
+    // Apply sorting and pagination
+    query = query.orderBy(desc(submissions.createdAt));
     
-    if (whereClause) {
-      mainQuery = mainQuery.where(whereClause) as any;
+    if (filters?.limit) {
+      query = query.limit(filters.limit);
     }
     
-    // Chain all the query modifiers
-    const finalQuery = mainQuery
-      .orderBy(desc(submissions.createdAt))
-      .limit(filters?.limit || 50)
-      .offset(filters?.offset || 0);
+    if (filters?.offset) {
+      query = query.offset(filters.offset);
+    }
     
-    const submissionResults = await finalQuery;
+    const submissionResults = await query;
     
     return { submissions: submissionResults, total };
   }

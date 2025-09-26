@@ -38,7 +38,7 @@ export function registerRoutes(app: Express): Server {
   // Serve static audio files
   app.use('/audios', require('express').static('server/audios'));
 
-  // Simple API Route - returns random audio file URL
+  // Simple API Route - returns random audio file URL as plain text
   app.post('/voice', (req, res) => {
     try {
       const { CallSid, From } = req.body;
@@ -50,19 +50,13 @@ export function registerRoutes(app: Express): Server {
       console.log(`📞 Request from: ${CallSid} - ${From}`);
       console.log(`🎵 Random audio selected: ${selectedTwisterUrl}`);
 
-      // Return JSON with random audio URL
-      res.json({
-        success: true,
-        audioUrl: selectedTwisterUrl,
-        index: randomIndex
-      });
+      // Return plain text with audio URL
+      res.set('Content-Type', 'text/plain');
+      res.send(selectedTwisterUrl);
       
     } catch (error) {
       console.error('Voice route error:', error);
-      res.status(500).json({ 
-        success: false, 
-        error: 'Server error' 
-      });
+      res.status(500).set('Content-Type', 'text/plain').send('Server error');
     }
   });
 

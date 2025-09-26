@@ -1,8 +1,6 @@
 import type { Express } from "express";
-import express from "express";
-// @ts-ignore - Twilio has module resolution issues with ES6 imports
-import twilio from "twilio";
-const { VoiceResponse } = twilio.twiml;
+import express from "express"; 
+import builder from "xmlbuilder"; 
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
@@ -29,177 +27,117 @@ export function registerRoutes(app: Express): Server {
     next();
   });
   
+  app.use(express.urlencoded({ extended: true })); // Needed for Exotel webhooks
+  app.use(express.json()); // In case you test via Postman
+  
   // Tongue twister audio files  
-  const tongueTwisters = [
-    `${process.env.BASE_URL || 'http://localhost:5000'}/audios/Pakhi-Paka-Pepe-khay.mp3`,
-    `${process.env.BASE_URL || 'http://localhost:5000'}/audios/Tele-chultaja-jole-chun-taja.mp3`, 
-    `${process.env.BASE_URL || 'http://localhost:5000'}/audios/Kacha-gab-paka-gab.mp3`
-  ];
-
-  // Audio URLs
   const audioUrls = {
-    greetings: `${process.env.BASE_URL || 'http://localhost:5000'}/audios/Greetings-Message.wav`,
-    press1: `${process.env.BASE_URL || 'http://localhost:5000'}/audios/press-1-to-listen-again.wav`,
-    thankYou: `${process.env.BASE_URL || 'http://localhost:5000'}/audios/Thank-You-Message.wav`
+    greetings: "http://centerfruit.karmatech.in/audios/Greetings-Message.wav",
+    press1: "http://centerfruit.karmatech.in/audios/press-1-to-listen-again.wav",
+    thankYou: "http://centerfruit.karmatech.in/audios/thank-you.wav"
   };
+
+  // Tongue twister list
+  const tongueTwisters = [
+    "http://centerfruit.karmatech.in/audios/Tele-chultaja-jole-chun-taja.mp3",
+    "http://centerfruit.karmatech.in/audios/Twister-2.mp3",
+    "http://centerfruit.karmatech.in/audios/Twister-3.mp3"
+  ];
 
   // Serve static audio files
   app.use('/audios', express.static('server/audios'));
 
   // Main IVR entry point - Greetings and random tongue twister
-  app.get('/voice', (req, res) => {
-    try {
-      const { CallSid, From } = req.query;
-      
-      // Randomly select a tongue twister and store in session
-      const randomIndex = Math.floor(Math.random() * tongueTwisters.length);
-      const selectedTwisterUrl = tongueTwisters[randomIndex];
-      
-      console.log(`📞 IVR Call from: ${CallSid} - ${From}`);
-      console.log(`🎵 Random tongue twister selected: ${selectedTwisterUrl}`);
+  
+// 1. Main IVR entry point
+app.get("/voice", (req, res) => {
+  const randomIndex = Math.floor(Math.random() * tongueTwisters.length);
+  const selectedTwisterUrl = tongueTwisters[randomIndex];
 
-      const twiml = new VoiceResponse();
-      
-      // Play greeting message
-      twiml.play(audioUrls.greetings);
-      
-      // Play the randomly selected tongue twister
-      twiml.play(selectedTwisterUrl);
-      
-      // Give option to press 1 to listen again with redirect
-      const gather = twiml.gather({
-        numDigits: 1,
-        timeout: 3,
-        action: `/voice/gather?twister=${randomIndex}`,
-        method: 'GET'
-      });
-      gather.play(audioUrls.press1);
-      
-      // If no input in 3 seconds, auto proceed to recording
-      twiml.redirect({
-        method: 'GET'
-      }, `/voice/record?twister=${randomIndex}`);
+  const xml = builder.create("Response");
+  xml.ele("Play", {}, audioUrls.greetings);
+  xml.ele("Play", {}, selectedTwisterUrl);
 
-      res.type('text/xml');
-      res.send(twiml.toString());
-      
-    } catch (error) {
-      console.error('Voice route error:', error);
-      const twiml = new VoiceResponse();
-      twiml.say('Sorry, there was an error. Please try again later.');
-      res.type('text/xml').send(twiml.toString());
-    }
+  const gather = xml.ele("Gather", {
+    numDigits: "1",
+    timeout: "3",
+    action: `http://centerfruit.karmatech.in/voice/gather?twister=${randomIndex}`,
+    method: "GET"
+  });
+  gather.ele("Play", {}, audioUrls.press1);
+
+  xml.ele("Redirect", { method: "GET" }, `http://centerfruit.karmatech.in/voice/record?twister=${randomIndex}`);
+
+  res.type("text/xml");
+  res.send(xml.end({ pretty: true }));
+});
+
+// 2. Handle user input
+app.get("/voice/gather", (req, res) => {
+  const { Digits } = req.query;
+  const twisterParam = req.query.twister;
+  const twisterIndex = parseInt(
+    typeof twisterParam === "string"
+      ? twisterParam
+      : Array.isArray(twisterParam) && typeof twisterParam[0] === "string"
+        ? twisterParam[0]
+        : "0",
+    10
+  ) || 0;
+  const selectedTwisterUrl = tongueTwisters[twisterIndex];
+
+  const xml = builder.create("Response");
+
+  if (Digits === "1") {
+    xml.ele("Play", {}, selectedTwisterUrl);
+
+    const gather = xml.ele("Gather", {
+      numDigits: "1",
+      timeout: "3",
+      action: `http://centerfruit.karmatech.in/voice/gather?twister=${twisterIndex}`,
+      method: "GET"
+    });
+    gather.ele("Play", {}, audioUrls.press1);
+
+    xml.ele("Redirect", { method: "GET" }, `http://centerfruit.karmatech.in/voice/record?twister=${twisterIndex}`);
+  } else {
+    xml.ele("Redirect", { method: "GET" }, `http://centerfruit.karmatech.in/voice/record?twister=${twisterIndex}`);
+  }
+
+  res.type("text/xml");
+  res.send(xml.end({ pretty: true }));
+});
+
+// 3. Recording phase
+app.get("/voice/record", (req, res) => {
+  const { twister } = req.query;
+
+  const xml = builder.create("Response");
+  xml.ele("Record", {
+    action: "http://centerfruit.karmatech.in/voice/complete",
+    method: "GET",
+    maxLength: "30",
+    finishOnKey: "#",
+    playBeep: "true",
+    recordingCallback: "http://centerfruit.karmatech.in/ivr/recording"
   });
 
-  // Handle user input (press 1 to listen again)  
-  app.get('/voice/gather', (req, res) => {
-    try {
-      const { Digits, CallSid, From } = req.query;
-      const twisterIndex = parseInt(req.query.twister as string) || 0;
-      const selectedTwisterUrl = tongueTwisters[twisterIndex];
-      
-      console.log(`📞 User pressed: ${Digits} for CallSid: ${CallSid}`);
-      
-      const twiml = new VoiceResponse();
-      
-      if (Digits === '1') {
-        // User wants to listen again
-        console.log(`🔁 Replaying tongue twister: ${selectedTwisterUrl}`);
-        twiml.play(selectedTwisterUrl);
-        
-        // Give option again with same twister
-        const gather = twiml.gather({
-          numDigits: 1,
-          timeout: 3,
-          action: `/voice/gather?twister=${twisterIndex}`,
-          method: 'GET'
-        });
-        gather.play(audioUrls.press1);
-        
-        // Auto proceed to recording after timeout
-        twiml.redirect({
-          method: 'GET'
-        }, `/voice/record?twister=${twisterIndex}`);
-      } else {
-        // Any other digit or timeout, proceed to recording
-        twiml.redirect({
-          method: 'GET'
-        }, `/voice/record?twister=${twisterIndex}`);
-      }
+  xml.ele("Play", {}, "http://centerfruit.karmatech.in/audios/please-say-3-times.wav");
 
-      res.type('text/xml');
-      res.send(twiml.toString());
-      
-    } catch (error) {
-      console.error('Gather route error:', error);
-      const twiml = new VoiceResponse();
-      twiml.say('Error processing input.');
-      res.type('text/xml').send(twiml.toString());
-    }
+  res.type("text/xml");
+  res.send(xml.end({ pretty: true }));
+});
+
+// 4. Completion
+  app.get("/voice/complete", (req, res) => {
+    const xml = builder.create("Response");
+    xml.ele("Play", {}, audioUrls.thankYou);
+    xml.ele("Hangup");
+
+    res.type("text/xml");
+    res.send(xml.end({ pretty: true })); 
   });
-
-  // Recording phase - Beep and record user's attempt
-  app.get('/voice/record', (req, res) => {
-    try {
-      const { CallSid, From } = req.query;
-      const twisterIndex = parseInt(req.query.twister as string) || 0;
-      
-      console.log(`🎙️ Starting recording for CallSid: ${CallSid}, Twister Index: ${twisterIndex}`);
-      
-      const twiml = new VoiceResponse();
-      
-      // Record user's attempt (3 times the tongue twister)
-      twiml.record({
-        action: '/voice/complete',
-        method: 'GET',
-        maxLength: 30, // 30 seconds max
-        finishOnKey: '#',
-        recordingStatusCallback: '/ivr/recording',
-        recordingStatusCallbackMethod: 'POST',
-        playBeep: true // This gives the beep sound
-      });
-      
-      // Fallback in case recording doesn't start
-      twiml.say('Please say the tongue twister three times after the beep, then press hash or hang up.');
-
-      res.type('text/xml');
-      res.send(twiml.toString());
-      
-    } catch (error) {
-      console.error('Record route error:', error);
-      const twiml = new VoiceResponse();
-      twiml.say('Recording error occurred.');
-      res.type('text/xml').send(twiml.toString());
-    }
-  });
-
-  // Complete the call - Thank you message
-  app.get('/voice/complete', (req, res) => {
-    try {
-      const { CallSid, RecordingUrl } = req.query;
-      
-      console.log(`✅ Recording completed for CallSid: ${CallSid}`);
-      console.log(`🎵 Recording URL: ${RecordingUrl}`);
-      
-      const twiml = new VoiceResponse();
-      
-      // Play thank you message
-      twiml.play(audioUrls.thankYou);
-      
-      // End the call
-      twiml.hangup();
-
-      res.type('text/xml');
-      res.send(twiml.toString());
-      
-    } catch (error) {
-      console.error('Complete route error:', error);
-      const twiml = new VoiceResponse();
-      twiml.say('Thank you for calling.');
-      twiml.hangup();
-      res.type('text/xml').send(twiml.toString());
-    }
-  });
+  
 
   
 

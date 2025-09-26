@@ -31,9 +31,9 @@ export function registerRoutes(app: Express): Server {
 
   // Tongue twister audio files
   const tongueTwisters = [
-    `${process.env.BASE_URL || 'http://localhost:5000'}/audios/Pakhi Paka Pepe khay.wav`,
-    `${process.env.BASE_URL || 'http://localhost:5000'}/audios/Tele chultaja jole chun taja.wav`,
-    `${process.env.BASE_URL || 'http://localhost:5000'}/audios/Kacha gab paka gab.wav`
+    `${process.env.BASE_URL || 'http://localhost:5000'}/audios/Pakhi Paka Pepe khay.mp3`,
+    `${process.env.BASE_URL || 'http://localhost:5000'}/audios/Tele chultaja jole chun taja.mp3`,
+    `${process.env.BASE_URL || 'http://localhost:5000'}/audios/Kacha gab paka gab.mp3`
   ];
 
   // Serve static audio files
@@ -257,10 +257,10 @@ export function registerRoutes(app: Express): Server {
 
   const httpServer = createServer(app);
   
-  // Start Exotel polling service - temporarily disabled to prevent crashes due to missing service-account-key.json
-  // exotelPollingService.startPolling().catch(err => 
-  //   console.error('Failed to start Exotel polling service:', err)
-  // );
+  // Start Exotel polling service
+  exotelPollingService.startPolling().catch(err => 
+    console.error('Failed to start Exotel polling service:', err)
+  );
   
   return httpServer;
 }

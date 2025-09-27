@@ -37,11 +37,12 @@ export class SpeechToTextService {
   }
 
   async transcribeAudio(recordingUrl: string): Promise<SpeechToTextResult> {
-    // Test mode: return mock transcript for testing without external API
-    if (process.env.NODE_ENV === 'test' || process.env.DISABLE_EXTERNAL_CALLS === 'true') {
+    // Check if recordingUrl is provided and valid
+    if (!recordingUrl || recordingUrl.trim() === '') {
+      console.warn('No recording URL provided, skipping transcription');
       return {
-        transcript: "चंदू के चाचा ने चंदू की चाची को चांदनी चौक में चांदी के चम्मच से चटनी चटाई।",
-        confidence: 0.9,
+        transcript: '',
+        confidence: 0
       };
     }
 
@@ -59,7 +60,11 @@ export class SpeechToTextService {
         const exotelPassword = process.env.EXOTEL_PASSWORD;
         
         if (!exotelUsername || !exotelPassword) {
-          throw new Error('EXOTEL_USERNAME and EXOTEL_PASSWORD environment variables are required for Exotel recordings');
+          console.warn('EXOTEL credentials not found, skipping transcription');
+          return {
+            transcript: '',
+            confidence: 0
+          };
         }
 
         const authHeader = 'Basic ' + Buffer.from(`${exotelUsername}:${exotelPassword}`).toString('base64');
@@ -76,10 +81,24 @@ export class SpeechToTextService {
       }
 
       if (!audioResponse.ok) {
-        throw new Error(`Failed to download audio: ${audioResponse.status} ${audioResponse.statusText}`);
+        console.warn(`Audio file not found or inaccessible: ${audioResponse.status} ${audioResponse.statusText}`);
+        return {
+          transcript: '',
+          confidence: 0
+        };
       }
       
       const arrayBuffer = await audioResponse.arrayBuffer();
+      
+      // Check if audio content is valid
+      if (!arrayBuffer || arrayBuffer.byteLength === 0) {
+        console.warn('Audio file is empty or corrupted, skipping transcription');
+        return {
+          transcript: '',
+          confidence: 0
+        };
+      }
+
       const audioBuffer = await this.streamToBuffer(arrayBuffer);
 
       // Configure the request
@@ -102,14 +121,22 @@ export class SpeechToTextService {
       const [sttResponse] = await this.client.recognize(request);
       
       if (!sttResponse.results || sttResponse.results.length === 0) {
-        throw new Error('No transcript found in audio');
+        console.warn('No transcript found in audio, returning empty result');
+        return {
+          transcript: '',
+          confidence: 0
+        };
       }
 
       const result = sttResponse.results[0];
       const alternative = result.alternatives?.[0];
       
       if (!alternative || !alternative.transcript) {
-        throw new Error('No transcript alternative found');
+        console.warn('No transcript alternative found, returning empty result');
+        return {
+          transcript: '',
+          confidence: 0
+        };
       }
 
       // Log the speech recognition result
@@ -123,8 +150,11 @@ export class SpeechToTextService {
         confidence: alternative.confidence || 0,
       };
     } catch (error) {
-      console.error('Speech-to-text error:', error);
-      throw new Error(`Failed to transcribe audio: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.warn('Speech-to-text error, skipping transcription:', error);
+      return {
+        transcript: '',
+        confidence: 0
+      };
     }
   }
 

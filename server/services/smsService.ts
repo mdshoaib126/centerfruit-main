@@ -57,12 +57,12 @@ export class SMSService {
       }
     }
     // Test mode: return mock success without sending actual SMS
-    if (process.env.NODE_ENV === 'test' || process.env.DISABLE_EXTERNAL_CALLS === 'true' || !process.env.MSG91_API_KEY) {
+    /* if (process.env.NODE_ENV === 'test' || process.env.DISABLE_EXTERNAL_CALLS === 'true' || !process.env.MSG91_API_KEY) {
       return {
         success: true,
         messageId: 'mock-message-' + Date.now(),
       };
-    }
+    } */
 
     try {
       const templateId = status === 'PASS' ? 
@@ -73,11 +73,12 @@ export class SMSService {
         throw new Error(`Template ID not configured for ${status} status`);
       }
 
+       
       const payload = {
         template_id: templateId,
         sender: this.senderId,
         short_url: "0",
-        mobiles: phoneNumber.replace('+91', '').replace(/\s+/g, ''), // Clean phone number
+        mobiles: phoneNumber,  
         
       };
 

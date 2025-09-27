@@ -34,6 +34,32 @@ export class ExotelPollingService {
     this.loadProcessedCallSids();
   }
 
+  // Normalize mobile number: remove leading 0 and add country code 91
+  private normalizeMobileNumber(phoneNumber: string): string {
+    if (!phoneNumber) return phoneNumber;
+    
+    // Remove any spaces, dashes, or other formatting
+    let normalized = phoneNumber.replace(/[\s\-\(\)]/g, '');
+    
+    // Remove leading 0 if present
+    if (normalized.startsWith('0')) {
+      normalized = normalized.substring(1);
+    }
+    
+    // Add country code 91 if not present
+    if (!normalized.startsWith('91') && !normalized.startsWith('+91')) {
+      normalized = '91' + normalized;
+    }
+    
+    // Remove + if present at the beginning
+    if (normalized.startsWith('+')) {
+      normalized = normalized.substring(1);
+    }
+    
+    console.log(`📱 Normalized phone number: ${phoneNumber} → ${normalized}`);
+    return normalized;
+  }
+
   async startPolling() {
     if (this.isPolling) {
       console.log('Polling already started');
@@ -180,6 +206,9 @@ export class ExotelPollingService {
         return;
       }
 
+      // Normalize the mobile number for proper SMS delivery
+      const normalizedPhoneNumber = this.normalizeMobileNumber(call.From);
+
       // Validate and create submission
       const validatedData = insertSubmissionSchema.pick({
         callSid: true,
@@ -188,7 +217,7 @@ export class ExotelPollingService {
         status: true,
       }).parse({
         callSid: call.Sid,
-        callerNumber: call.From,
+        callerNumber: normalizedPhoneNumber,
         recordingUrl: call.RecordingUrl,
         status: "PENDING",
       });

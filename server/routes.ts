@@ -11,6 +11,32 @@ import { exotelPollingService } from "./services/exotelPollingService";
 import { insertSubmissionSchema, updateSubmissionStatusSchema } from "@shared/schema";
 import { z } from "zod";
 
+// Utility function to normalize mobile numbers
+function normalizeMobileNumber(phoneNumber: string): string {
+  if (!phoneNumber) return phoneNumber;
+  
+  // Remove any spaces, dashes, or other formatting
+  let normalized = phoneNumber.replace(/[\s\-\(\)]/g, '');
+  
+  // Remove leading 0 if present
+  if (normalized.startsWith('0')) {
+    normalized = normalized.substring(1);
+  }
+  
+  // Add country code 91 if not present
+  if (!normalized.startsWith('91') && !normalized.startsWith('+91')) {
+    normalized = '91' + normalized;
+  }
+  
+  // Remove + if present at the beginning
+  if (normalized.startsWith('+')) {
+    normalized = normalized.substring(1);
+  }
+  
+  console.log(`📱 Normalized phone number: ${phoneNumber} → ${normalized}`);
+  return normalized;
+}
+
 export function registerRoutes(app: Express): Server {
   // Setup authentication routes
   setupAuth(app);
@@ -155,6 +181,9 @@ app.get("/voice/record", (req, res) => {
         return res.status(400).json({ error: "Missing required fields: CallSid, RecordingUrl, From" });
       }
 
+      // Normalize the mobile number for proper SMS delivery
+      const normalizedPhoneNumber = normalizeMobileNumber(From);
+
       // Validate input data
       const validatedData = insertSubmissionSchema.pick({
         callSid: true,
@@ -163,7 +192,7 @@ app.get("/voice/record", (req, res) => {
         status: true
       }).parse({
         callSid: CallSid,
-        callerNumber: From,
+        callerNumber: normalizedPhoneNumber,
         recordingUrl: RecordingUrl,
         status: "PENDING",
       });
@@ -358,6 +387,19 @@ export async function processSubmissionAsync(submissionId: string) {
     
     // Step 1: Transcribe audio
     const transcriptResult = await speechToTextService.transcribeAudio(submission.recordingUrl);
+    
+    // Check if transcription is empty (audio file not found or no speech detected)
+    if (!transcriptResult.transcript || transcriptResult.transcript.trim() === '') {
+      console.warn(`No audio or transcript found for submission ${submissionId}, marking as FAIL`);
+      
+      await storage.updateSubmission(submissionId, {
+        transcript: 'No audio found',
+        score: 0,
+        status: 'FAIL',
+      });
+      
+      return; // Skip SMS and further processing
+    }
     
     // Step 2: Score the transcript
     const scoringResult = scoringService.scoreTranscript(transcriptResult.transcript);

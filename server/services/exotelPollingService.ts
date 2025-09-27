@@ -94,9 +94,12 @@ export class ExotelPollingService {
     try {
       console.log('🔄 Polling Exotel for new calls...');
       
-      // Get calls from last 30 minutes to ensure we don't miss any
-      const fromTime = new Date(Date.now() - 30 * 60 * 1000).toISOString();
-      const toTime = new Date().toISOString();
+      // Get calls from today only to avoid timezone issues
+      const today = new Date();
+      const fromTime = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
+      const toTime = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1).toISOString();
+      
+      console.log(`🔍 Fetching calls for date range: ${fromTime} to ${toTime}`);
       
       const calls = await this.fetchExotelCalls(fromTime, toTime);
       
@@ -177,16 +180,16 @@ export class ExotelPollingService {
     const data: ExotelApiResponse = await response.json();
     console.log(`📊 Found ${data.Calls?.length || 0} total calls in response`);
     
-    // Filter calls by time range manually since API date filtering seems to have issues
-    const fromTimestamp = new Date(fromTime).getTime();
-    const toTimestamp = new Date(toTime).getTime();
+    // Filter calls from today only (no specific time filtering to avoid timezone issues)
+    const today = new Date();
+    const todayDateStr = today.toISOString().slice(0, 10); // YYYY-MM-DD format
     
     const filteredCalls = (data.Calls || []).filter(call => {
-      const callTimestamp = new Date(call.DateCreated).getTime();
-      return callTimestamp >= fromTimestamp && callTimestamp <= toTimestamp;
+      const callDateStr = new Date(call.DateCreated).toISOString().slice(0, 10);
+      return callDateStr === todayDateStr;
     });
     
-    console.log(`📊 Found ${filteredCalls.length} calls in time range ${fromDate} to ${toDate}`);
+    console.log(`📊 Found ${filteredCalls.length} calls for today (${todayDateStr})`);
     
     return filteredCalls;
   }

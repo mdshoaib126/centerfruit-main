@@ -94,8 +94,8 @@ export class ExotelPollingService {
     try {
       console.log('🔄 Polling Exotel for new calls...');
       
-      // Get calls from last 10 minutes to ensure we don't miss any
-      const fromTime = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+      // Get calls from last 30 minutes to ensure we don't miss any
+      const fromTime = new Date(Date.now() - 30 * 60 * 1000).toISOString();
       const toTime = new Date().toISOString();
       
       const calls = await this.fetchExotelCalls(fromTime, toTime);

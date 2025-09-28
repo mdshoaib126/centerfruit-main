@@ -111,17 +111,27 @@ export class ExotelPollingService {
           continue;
         }
 
-        // Only process completed inbound calls with recordings
-        if (call.Status === 'completed' && 
-            call.Direction === 'inbound' && 
-            call.RecordingUrl && 
-            call.RecordingUrl.trim() !== '') {
+        // Process completed or pending inbound calls
+        if ((call.Status === 'completed' || call.Status === 'pending') && 
+            call.Direction === 'inbound') {
+          
+          // For completed calls, we need a recording URL
+          if (call.Status === 'completed' && (!call.RecordingUrl || call.RecordingUrl.trim() === '')) {
+            console.log(`⏭️ Skipping completed call ${call.Sid}: No recording URL`);
+            continue;
+          }
+          
+          // For pending calls, recording URL might not be available yet
+          if (call.Status === 'pending') {
+            console.log(`⏳ Processing pending call ${call.Sid}: Recording may not be available yet`);
+          }
+          
           await this.processNewCall(call);
           this.processedCallSids.add(call.Sid);
           newCallsProcessed++;
         } else {
           // Log why we're skipping this call
-          if (call.Status !== 'completed') {
+          if (call.Status !== 'completed' && call.Status !== 'pending') {
             console.log(`⏭️ Skipping call ${call.Sid}: Status is ${call.Status}`);
           } else if (call.Direction !== 'inbound') {
             console.log(`⏭️ Skipping call ${call.Sid}: Direction is ${call.Direction}`);
@@ -221,18 +231,23 @@ export class ExotelPollingService {
       }).parse({
         callSid: call.Sid,
         callerNumber: normalizedPhoneNumber,
-        recordingUrl: call.RecordingUrl,
+        recordingUrl: call.RecordingUrl || '', // Handle null/undefined recording URL for pending calls
         status: "PENDING",
       });
 
       const submission = await storage.createSubmission(validatedData);
       console.log(`✅ Created submission: ${submission.id}`);
 
-      // Process asynchronously using the exported function
-      const { processSubmissionAsync } = await import('../routes');
-      processSubmissionAsync(submission.id).catch((err: any) =>
-        console.error('Async processing error:', err)
-      ); 
+      // Only process asynchronously if we have a recording URL
+      if (call.RecordingUrl && call.RecordingUrl.trim() !== '') {
+        // Process asynchronously using the exported function
+        const { processSubmissionAsync } = await import('../routes');
+        processSubmissionAsync(submission.id).catch((err: any) =>
+          console.error('Async processing error:', err)
+        );
+      } else {
+        console.log(`⏳ Submission ${submission.id} created but no recording URL available yet - will process when recording is ready`);
+      } 
 
     } catch (error) {
       console.error(`Error processing call ${call.Sid}:`, error);

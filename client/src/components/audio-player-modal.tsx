@@ -252,7 +252,7 @@ export default function AudioPlayerModal({ isOpen, onClose, submission }: AudioP
             
             {submission?.recordingUrl && (
               <div className="text-xs text-muted-foreground mt-2">
-                <div className="truncate">Source: {submission.recordingUrl}</div>
+                {/* <div className="truncate">Source: {submission.recordingUrl}</div> */}
                 <div className="mt-1">
                   <a 
                     href={`/api/audio-proxy?url=${encodeURIComponent(submission.recordingUrl)}`}

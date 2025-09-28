@@ -365,6 +365,7 @@ app.get("/voice/record", (req, res) => {
   // Audio proxy endpoint for authenticated Exotel recordings
   app.get("/api/audio-proxy", async (req, res) => {
     if (!req.isAuthenticated()) {
+      console.log("🔒 Audio proxy: Unauthorized access attempt");
       return res.sendStatus(401);
     }
 
@@ -372,8 +373,11 @@ app.get("/voice/record", (req, res) => {
       const { url } = req.query;
       
       if (!url || typeof url !== 'string') {
+        console.log("❌ Audio proxy: Missing URL parameter");
         return res.status(400).json({ error: "URL parameter is required" });
       }
+
+      console.log("🎵 Audio proxy request for:", url);
 
       // Check if this is an Exotel recording URL that requires authentication
       const isExotelUrl = url.includes('recordings.exotel.com');
@@ -385,11 +389,13 @@ app.get("/voice/record", (req, res) => {
         const exotelPassword = process.env.EXOTEL_PASSWORD;
         
         if (!exotelUsername || !exotelPassword) {
+          console.log("❌ Audio proxy: Exotel credentials not configured");
           return res.status(500).json({ error: "Exotel credentials not configured" });
         }
 
         const authHeader = 'Basic ' + Buffer.from(`${exotelUsername}:${exotelPassword}`).toString('base64');
         
+        console.log("🔐 Audio proxy: Using Exotel authentication");
         audioResponse = await fetch(url, {
           method: 'GET',
           headers: {
@@ -398,10 +404,14 @@ app.get("/voice/record", (req, res) => {
         });
       } else {
         // Regular download for other URLs
+        console.log("🌐 Audio proxy: Regular fetch for non-Exotel URL");
         audioResponse = await fetch(url);
       }
 
+      console.log(`📊 Audio proxy response: ${audioResponse.status} ${audioResponse.statusText}`);
+
       if (!audioResponse.ok) {
+        console.log(`❌ Audio proxy: Failed to fetch - ${audioResponse.status} ${audioResponse.statusText}`);
         return res.status(audioResponse.status).json({ 
           error: `Failed to fetch audio: ${audioResponse.statusText}` 
         });
@@ -409,18 +419,49 @@ app.get("/voice/record", (req, res) => {
 
       // Get the content type from the original response
       const contentType = audioResponse.headers.get('content-type') || 'audio/mpeg';
+      const contentLength = audioResponse.headers.get('content-length');
       
-      // Set appropriate headers for audio streaming
-      res.setHeader('Content-Type', contentType);
-      res.setHeader('Accept-Ranges', 'bytes');
-      res.setHeader('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
+      console.log(`✅ Audio proxy: Serving ${contentType}, size: ${contentLength || 'unknown'}`);
       
-      // Stream the audio data
-      const buffer = await audioResponse.arrayBuffer();
-      res.send(Buffer.from(buffer));
+      // Handle range requests for audio streaming
+      const range = req.headers.range;
+      const buffer = Buffer.from(await audioResponse.arrayBuffer());
+      const fileSize = buffer.length;
+      
+      if (range) {
+        const parts = range.replace(/bytes=/, "").split("-");
+        const start = parseInt(parts[0], 10);
+        const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+        const chunksize = (end - start) + 1;
+        const chunk = buffer.slice(start, end + 1);
+        
+        console.log(`📊 Audio proxy: Range request ${start}-${end}/${fileSize}`);
+        
+        res.status(206);
+        res.setHeader('Content-Range', `bytes ${start}-${end}/${fileSize}`);
+        res.setHeader('Accept-Ranges', 'bytes');
+        res.setHeader('Content-Length', chunksize);
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.send(chunk);
+      } else {
+        // Set appropriate headers for full audio streaming
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Accept-Ranges', 'bytes');
+        res.setHeader('Cache-Control', 'public, max-age=3600');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET');
+        res.setHeader('Access-Control-Allow-Headers', 'Range, Content-Type');
+        
+        if (contentLength) {
+          res.setHeader('Content-Length', contentLength);
+        }
+        
+        res.send(buffer);
+      }
 
     } catch (error) {
-      console.error("Audio proxy error:", error);
+      console.error("❌ Audio proxy error:", error);
       res.status(500).json({ error: "Failed to proxy audio" });
     }
   });

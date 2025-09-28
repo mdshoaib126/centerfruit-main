@@ -180,16 +180,16 @@ export class ExotelPollingService {
     const data: ExotelApiResponse = await response.json();
     console.log(`📊 Found ${data.Calls?.length || 0} total calls in response`);
     
-    // Filter calls from today only (no specific time filtering to avoid timezone issues)
-    const today = new Date();
-    const todayDateStr = today.toISOString().slice(0, 10); // YYYY-MM-DD format
+    // Filter calls by time range manually since API date filtering seems to have issues
+    const fromTimestamp = new Date(fromTime).getTime();
+    const toTimestamp = new Date(toTime).getTime();
     
     const filteredCalls = (data.Calls || []).filter(call => {
-      const callDateStr = new Date(call.DateCreated).toISOString().slice(0, 10);
-      return callDateStr === todayDateStr;
+      const callTimestamp = new Date(call.DateCreated).getTime();
+      return callTimestamp >= fromTimestamp && callTimestamp <= toTimestamp;
     });
     
-    console.log(`📊 Found ${filteredCalls.length} calls for today (${todayDateStr})`);
+    console.log(`📊 Found ${filteredCalls.length} calls in time range ${fromDate} to ${toDate}`);
     
     return filteredCalls;
   }
@@ -232,7 +232,7 @@ export class ExotelPollingService {
       const { processSubmissionAsync } = await import('../routes');
       processSubmissionAsync(submission.id).catch((err: any) =>
         console.error('Async processing error:', err)
-      );
+      ); 
 
     } catch (error) {
       console.error(`Error processing call ${call.Sid}:`, error);

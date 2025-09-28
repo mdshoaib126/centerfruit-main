@@ -4,8 +4,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 interface StatsData {
   totalSubmissions: number;
   pendingCount: number;
-  passRate: number;
-  avgScore: number;
+  todayPassed: number;
+  todayFailed: number;
 }
 
 interface StatsCardsProps {
@@ -57,9 +57,9 @@ export default function StatsCards({ stats, isLoading }: StatsCardsProps) {
         <CardContent className="pt-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground">Pass Rate</p>
-              <p className="text-2xl font-bold text-foreground" data-testid="stat-pass-rate">
-                {stats?.passRate || 0}%
+              <p className="text-sm text-muted-foreground">Today's Passed</p>
+              <p className="text-2xl font-bold text-foreground" data-testid="stat-today-passed">
+                {stats?.todayPassed || 0}
               </p>
             </div>
             <div className="w-12 h-12 bg-success/10 rounded-lg flex items-center justify-center">
@@ -67,7 +67,7 @@ export default function StatsCards({ stats, isLoading }: StatsCardsProps) {
             </div>
           </div>
           <div className="mt-4 flex items-center">
-            <span className="text-sm text-success font-medium">Good performance</span>
+            <span className="text-sm text-success font-medium">Passed today</span>
           </div>
         </CardContent>
       </Card>
@@ -76,18 +76,17 @@ export default function StatsCards({ stats, isLoading }: StatsCardsProps) {
         <CardContent className="pt-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground">Avg Score</p>
-              <p className="text-2xl font-bold text-foreground" data-testid="stat-avg-score">
-                {stats?.avgScore || 0}
+              <p className="text-sm text-muted-foreground">Today's Failed</p>
+              <p className="text-2xl font-bold text-foreground" data-testid="stat-today-failed">
+                {stats?.todayFailed || 0}
               </p>
             </div>
-            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-              <i className="fas fa-star text-blue-600 text-lg"></i>
+            <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
+              <i className="fas fa-times text-red-600 text-lg"></i>
             </div>
           </div>
           <div className="mt-4 flex items-center">
-            <span className="text-sm text-success font-medium">+2.1 points</span>
-            <span className="text-sm text-muted-foreground ml-2">this month</span>
+            <span className="text-sm text-red-600 font-medium">Failed today</span>
           </div>
         </CardContent>
       </Card>

@@ -10,7 +10,7 @@ export class SMSService {
   private apiKey: string;
   private senderId: string;
   private baseUrl = 'https://api.msg91.com/api/v5/flow/';
-  private readonly DAILY_PASS_SMS_LIMIT = 100;
+  private readonly DAILY_PASS_SMS_LIMIT = 200;
 
   constructor() {
     this.apiKey = process.env.MSG91_API_KEY || process.env.MSG91_API_KEY_ENV_VAR || "default_key";

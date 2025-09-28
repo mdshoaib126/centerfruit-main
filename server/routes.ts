@@ -313,21 +313,26 @@ app.get("/voice/record", (req, res) => {
       
       const totalSubmissions = allSubmissions.length;
       const pendingCount = allSubmissions.filter(s => s.status === "PENDING").length;
-      const passCount = allSubmissions.filter(s => s.status === "PASS").length;
-      const failCount = allSubmissions.filter(s => s.status === "FAIL").length;
       
-      const passRate = totalSubmissions > 0 ? (passCount / (passCount + failCount)) * 100 : 0;
+      // Get today's date range
+      const today = new Date();
+      const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
       
-      const scoresWithValues = allSubmissions.filter(s => s.score !== null);
-      const avgScore = scoresWithValues.length > 0 
-        ? scoresWithValues.reduce((sum, s) => sum + (s.score || 0), 0) / scoresWithValues.length 
-        : 0;
+      // Filter submissions for today
+      const todaySubmissions = allSubmissions.filter(s => {
+        const submissionDate = new Date(s.createdAt);
+        return submissionDate >= startOfDay && submissionDate < endOfDay;
+      });
+      
+      const todayPassed = todaySubmissions.filter(s => s.status === "PASS").length;
+      const todayFailed = todaySubmissions.filter(s => s.status === "FAIL").length;
 
       res.json({
         totalSubmissions,
         pendingCount,
-        passRate: Math.round(passRate * 10) / 10,
-        avgScore: Math.round(avgScore * 10) / 10,
+        todayPassed,
+        todayFailed,
       });
     } catch (error) {
       console.error("Get stats error:", error);

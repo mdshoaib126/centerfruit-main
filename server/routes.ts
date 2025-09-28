@@ -362,6 +362,69 @@ app.get("/voice/record", (req, res) => {
     }
   });
 
+  // Audio proxy endpoint for authenticated Exotel recordings
+  app.get("/api/audio-proxy", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const { url } = req.query;
+      
+      if (!url || typeof url !== 'string') {
+        return res.status(400).json({ error: "URL parameter is required" });
+      }
+
+      // Check if this is an Exotel recording URL that requires authentication
+      const isExotelUrl = url.includes('recordings.exotel.com');
+      let audioResponse;
+
+      if (isExotelUrl) {
+        // Use Exotel credentials for authenticated download
+        const exotelUsername = process.env.EXOTEL_USERNAME;
+        const exotelPassword = process.env.EXOTEL_PASSWORD;
+        
+        if (!exotelUsername || !exotelPassword) {
+          return res.status(500).json({ error: "Exotel credentials not configured" });
+        }
+
+        const authHeader = 'Basic ' + Buffer.from(`${exotelUsername}:${exotelPassword}`).toString('base64');
+        
+        audioResponse = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Authorization': authHeader,
+          },
+        });
+      } else {
+        // Regular download for other URLs
+        audioResponse = await fetch(url);
+      }
+
+      if (!audioResponse.ok) {
+        return res.status(audioResponse.status).json({ 
+          error: `Failed to fetch audio: ${audioResponse.statusText}` 
+        });
+      }
+
+      // Get the content type from the original response
+      const contentType = audioResponse.headers.get('content-type') || 'audio/mpeg';
+      
+      // Set appropriate headers for audio streaming
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Accept-Ranges', 'bytes');
+      res.setHeader('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
+      
+      // Stream the audio data
+      const buffer = await audioResponse.arrayBuffer();
+      res.send(Buffer.from(buffer));
+
+    } catch (error) {
+      console.error("Audio proxy error:", error);
+      res.status(500).json({ error: "Failed to proxy audio" });
+    }
+  });
+
   const httpServer = createServer(app);
   
   // Start Exotel polling service

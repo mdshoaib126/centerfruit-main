@@ -15,7 +15,9 @@ export default function AudioPlayerModal({ isOpen, onClose, submission }: AudioP
 
   useEffect(() => {
     if (isOpen && submission && audioRef.current) {
-      audioRef.current.src = submission.recordingUrl;
+      // Use audio proxy for authenticated access to Exotel recordings
+      const proxyUrl = `/api/audio-proxy?url=${encodeURIComponent(submission.recordingUrl)}`;
+      audioRef.current.src = proxyUrl;
       audioRef.current.load();
     }
   }, [isOpen, submission]);

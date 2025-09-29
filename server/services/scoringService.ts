@@ -11,7 +11,7 @@ export class ScoringService {
     "তেলে চুল তাজা, জলে চুন তাজা", 
     "কাঁচা গাব পাকা গাব"
   ];
-  private passThreshold = 70;
+  private passThreshold = 50;
 
   // Levenshtein distance algorithm
   private levenshteinDistance(str1: string, str2: string): number {
